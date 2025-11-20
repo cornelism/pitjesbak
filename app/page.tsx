@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 const DEFAULTS = {
   DICE_COUNT: 3,
@@ -10,61 +10,57 @@ const DEFAULTS = {
   GOAL: 3000,
 };
 
+const isRollValid = (dice: number[]) => {
+  return dice.includes(1) || dice.includes(5);
+};
+
+const calculateScore = (dice: number[]) => {
+  let points = 0;
+  dice.forEach((value) => {
+    if (value === 5) {
+      points += 50;
+    } else if (value === 1) {
+      points += 100;
+    }
+  });
+  return points;
+};
+
 export default function Home() {
   const [dice, setDice] = useState(DEFAULTS.DICE_START);
   const [isGameOver, setIsGameOver] = useState(false);
-  const [score, setScore] = useState(0);
-  const [currentScore, setCurrentScore] = useState(0);
-
-  const isRollValid = () => {
-    return dice.includes(1) || dice.includes(5);
-  };
-
-  const calculateScore = () => {
-    let points = 0;
-    dice.forEach((value) => {
-      if (value === 5) {
-        points += 50;
-      } else if (value === 1) {
-        points += 100;
-      }
-    });
-    return points;
-  };
+  const [score, setScore] = useState(DEFAULTS.SCORE);
+  const [currentScore, setCurrentScore] = useState(DEFAULTS.SCORE);
 
   const rollTheDice = () => {
-    const newDice = dice
-      .map(() => Math.floor(Math.random() * 6) + 1)
-      .sort((a, b) => b - a);
+    const newDice = Array.from(
+      { length: DEFAULTS.DICE_COUNT },
+      () => Math.floor(Math.random() * DEFAULTS.DIE_SIDES) + 1
+    ).sort((a, b) => b - a);
 
     setDice(newDice);
-    if (!isRollValid()) {
+
+    if (!isRollValid(newDice)) {
       setIsGameOver(true);
+      setCurrentScore(0);
     } else {
-      const points = calculateScore();
-      setCurrentScore(points);
+      const points = calculateScore(newDice);
+      setCurrentScore(currentScore + points);
     }
   };
 
   const cashOut = () => {
     setScore(score + currentScore);
-    // alert(`You cashed out with ${score} points!`);
+    setCurrentScore(0);
+    setDice(DEFAULTS.DICE_START);
   };
 
   const resetGame = () => {
-    setDice([1, 1, 1]);
+    setDice(DEFAULTS.DICE_START);
     setIsGameOver(false);
-    setScore(0);
-    setCurrentScore(0);
+    setScore(DEFAULTS.SCORE);
+    setCurrentScore(DEFAULTS.SCORE);
   };
-
-  useEffect(() => {
-    console.log("Current dice values:", dice);
-    if (!dice.includes(1) && !dice.includes(5)) {
-      console.log("Game over! You rolled no 1s or 5s.");
-      setIsGameOver(true);
-    }
-  }, [dice]);
 
   return (
     <div className="flex flex-col min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
@@ -95,7 +91,7 @@ export default function Home() {
       </div>
       {isGameOver ? (
         <button
-          onClick={() => resetGame()}
+          onClick={resetGame}
           className="mt-8 rounded-full bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         >
           Restart Game !
@@ -103,14 +99,16 @@ export default function Home() {
       ) : (
         <div className="flex flex-row gap-4">
           <button
-            onClick={() => rollTheDice()}
-            className="mt-8 rounded-full bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            onClick={rollTheDice}
+            disabled={!isRollValid(dice)}
+            className="mt-8 rounded-full bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400"
           >
             Roll the Dice
           </button>
           <button
-            onClick={() => cashOut()}
-            className="mt-8 rounded-full bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            onClick={cashOut}
+            disabled={currentScore === 0}
+            className="mt-8 rounded-full bg-blue-600 px-6 py-3 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-gray-400"
           >
             Cash Out
           </button>
