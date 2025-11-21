@@ -1,6 +1,7 @@
 # Pitjesbak
 
-A simple web-based version of the dice game 'Draadust'.
+A simple web-based version of the dice game 'Draadust'. More pitjesbak games will be added later.
+Note that this fun project is a work in progress.
 
 ## How to Play
 
@@ -22,10 +23,10 @@ The goal of the game is to be the first player to score 3000 points.
 ### Special Rolls
 
 - **Three of a kind (Sand):** 1000 points (must be confirmed with a subsequent valid roll).
+- **6-4-2:** Roll again.
+- **6-3-1:** You skip your next turn.
 - **4-3-2:** 200 points.
 - **4-2-1:** Opponent skips a turn.
-- **6-3-1:** You skip your next turn.
-- **6-4-2:** Roll again.
 
 ## Getting Started
 
