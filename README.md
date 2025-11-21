@@ -1,6 +1,7 @@
 # Pitjesbak
 
-A simple web-based version of the dice game 'Draadust'. More pitjesbak games will be added later.
+A simple web-based version of the dice game 'Draadust'.  
+More pitjesbak games will be added later.  
 Note that this fun project is a work in progress.
 
 ## How to Play
