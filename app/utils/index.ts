@@ -1,10 +1,11 @@
+"use client";
+
 import { DEFAULTS, RULES } from "./constants";
 import { DiceRoll } from "./types";
 
-export const isRollValid = (dice: DiceRoll) => {
-  const { SAND, OTHER_PLAYER_SKIPS_TURN, GETS_200_POINTS, SCORES, RETRY } =
-    RULES;
+const { SAND, OTHER_PLAYER_SKIPS_TURN, GETS_200_POINTS, SCORES, RETRY } = RULES;
 
+export const isRollValid = (dice: DiceRoll) => {
   if (
     SAND(dice) ||
     OTHER_PLAYER_SKIPS_TURN(dice) ||
@@ -18,16 +19,16 @@ export const isRollValid = (dice: DiceRoll) => {
   return false;
 };
 
-export const calculateScore = (dice: DiceRoll) => {
+export const calculateScore = (dice: DiceRoll, hasConfirmed?: boolean) => {
   let points = 0;
-  if (RULES.SAND(dice)) {
+  if (SAND(dice) && hasConfirmed) {
     points += 1000;
   }
-  if (RULES.GETS_200_POINTS(dice)) {
+  if (GETS_200_POINTS(dice)) {
     points += 200;
   }
 
-  if (RULES.SCORES(dice)) {
+  if (SCORES(dice)) {
     dice.forEach((value) => {
       if (value === 1) {
         points += 100;
@@ -42,12 +43,12 @@ export const calculateScore = (dice: DiceRoll) => {
 
 export const roll = () => {
   return Array.from(
-    { length: 3 },
+    { length: DEFAULTS.DICE_COUNT },
     () => Math.floor(Math.random() * DEFAULTS.DIE_SIDES) + 1
   ).sort((a, b) => b - a) as DiceRoll;
 };
 
-export const randomClass = () => {
+export const randomRotation = () => {
   const classes = [
     "rotate-1",
     "-rotate-1",
