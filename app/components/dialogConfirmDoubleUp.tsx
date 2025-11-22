@@ -3,10 +3,10 @@ import { Checkbox } from "./ui/checkbox";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
+  // DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  // DialogTrigger,
 } from "./ui/dialog";
 import { Label } from "./ui/label";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
