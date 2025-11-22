@@ -7,6 +7,8 @@ import { DiceRoll } from "./utils/types";
 import { DEFAULTS, PRIZE, RULES } from "./utils/constants";
 import { Dice } from "./components/dice";
 
+import { DialogConfirmDoubleUp } from "./components/dialogConfirmDoubleUp";
+
 const {
   DICE,
   SCORE,
@@ -26,6 +28,8 @@ export default function Home() {
   const [pointsToConfirm, setPointsToConfirm] =
     useState<number>(POINTS_TO_CONFIRM);
   const [multiplier, setMultiplier] = useState<number>(MULTIPLIER);
+  const [needsConfirmDoubleUp, setConfirmNeedsDoubleUp] =
+    useState<boolean>(true);
 
   const needsConfirmation = useMemo(() => {
     return pointsToConfirm > 0;
@@ -51,7 +55,6 @@ export default function Home() {
     } else {
       if (DOUBLE_UP(newRoll)) {
         // ask player if they want to double the points from now on
-        setMultiplier(multiplier * 2);
         // OR not
         // OR take points now
       }
@@ -97,6 +100,7 @@ export default function Home() {
             ? "Please confirm"
             : "Draadust."}
         </h1>
+        <DialogConfirmDoubleUp open={needsConfirmation} />
         <div className="flex flex-row gap-8 text-lg mb-5 text-white text-shadow-2xl">
           <span className="bg-amber-800 rounded-4xl px-3 py-1">
             Score: {score}
@@ -137,20 +141,6 @@ export default function Home() {
           </div>
         )}
       </div>
-      {/* <div className="basis-1/2 shadow-lg">
-        <div className="bg-white h-full">
-          <div className="flex flex-row justify-between">
-            <div className=" p-8">
-              <h2 className="text-4xl font-bold">Scoresheet</h2>
-            </div>
-            <div>
-              <button className="m-8 rounded-full bg-red-600 px-6 py-3 text-white hover:bg-red-700">
-                + Add player
-              </button>
-            </div>
-          </div>
-        </div>
-      </div> */}
     </main>
   );
 }
