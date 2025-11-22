@@ -7,6 +7,8 @@ export const DEFAULTS = {
   SCORE: 0,
   GOAL: 3000,
   MINIMUM_BANKING_SCORE: 500,
+  MULTIPLIER: 1,
+  POINTS_TO_CONFIRM: 0,
 } as const;
 
 const SAND = (dice: DiceRoll): boolean =>

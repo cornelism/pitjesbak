@@ -2,25 +2,36 @@
 
 import { useMemo, useState } from "react";
 
-import { calculateScore, isRollValid, randomRotation, roll } from "./utils";
+import { calculateScore, isRollValid, roll } from "./utils";
 import { DiceRoll } from "./utils/types";
 import { DEFAULTS, PRIZE, RULES } from "./utils/constants";
 import { Dice } from "./components/dice";
 
-const { DICE, SCORE, GOAL, MINIMUM_BANKING_SCORE } = DEFAULTS;
+const {
+  DICE,
+  SCORE,
+  // GOAL,
+  MINIMUM_BANKING_SCORE,
+  MULTIPLIER,
+  POINTS_TO_CONFIRM,
+} = DEFAULTS;
+
+const { DOUBLE_UP, SAND } = RULES;
 
 export default function Home() {
   const [dice, setDice] = useState<DiceRoll>(DICE as DiceRoll);
   const [isGameOver, setIsGameOver] = useState<boolean>(false);
   const [score, setScore] = useState<number>(SCORE);
   const [currentScore, setCurrentScore] = useState<number>(SCORE);
-  const [pointsToConfirm, setPointsToConfirm] = useState<number>(0);
+  const [pointsToConfirm, setPointsToConfirm] =
+    useState<number>(POINTS_TO_CONFIRM);
+  const [multiplier, setMultiplier] = useState<number>(MULTIPLIER);
 
   const needsConfirmation = useMemo(() => {
     return pointsToConfirm > 0;
   }, [pointsToConfirm]);
 
-  const playerHasBankedEnough = useMemo(() => {
+  const hasBank = useMemo(() => {
     return (
       (score === 0 && currentScore >= MINIMUM_BANKING_SCORE) ||
       (score >= MINIMUM_BANKING_SCORE && currentScore > 0)
@@ -28,8 +39,8 @@ export default function Home() {
   }, [score, currentScore]);
 
   const canTakePoints = useMemo(() => {
-    return playerHasBankedEnough && !needsConfirmation;
-  }, [playerHasBankedEnough, needsConfirmation]);
+    return hasBank && !needsConfirmation;
+  }, [hasBank, needsConfirmation]);
 
   const rollTheDice = () => {
     const newRoll = roll();
@@ -38,12 +49,20 @@ export default function Home() {
     if (!isRollValid(newRoll)) {
       gameOver();
     } else {
-      if (RULES.SAND(newRoll)) {
-        setPointsToConfirm(pointsToConfirm + PRIZE.SAND);
+      if (DOUBLE_UP(newRoll)) {
+        // ask player if they want to double the points from now on
+        setMultiplier(multiplier * 2);
+        // OR not
+        // OR take points now
+      }
+      if (SAND(newRoll)) {
+        setPointsToConfirm((pointsToConfirm + PRIZE.SAND) * multiplier);
       } else {
         const rollScore = calculateScore(newRoll);
+        setCurrentScore(
+          currentScore + (rollScore + pointsToConfirm) * multiplier
+        );
         setPointsToConfirm(0);
-        setCurrentScore(currentScore + rollScore + pointsToConfirm);
       }
     }
   };
@@ -51,6 +70,7 @@ export default function Home() {
   const cashOut = () => {
     setScore(score + currentScore);
     setCurrentScore(0);
+    setMultiplier(MULTIPLIER);
     // setDice(DICE);
   };
 
@@ -58,6 +78,8 @@ export default function Home() {
     setDice(DICE);
     setIsGameOver(false);
     setCurrentScore(SCORE);
+    setMultiplier(MULTIPLIER);
+    setPointsToConfirm(POINTS_TO_CONFIRM);
   };
 
   const gameOver = () => {
@@ -66,7 +88,7 @@ export default function Home() {
   };
 
   return (
-    <main className="flex items-center justify-center min-h-screen bg-(image:--carpet) bg-size-[300px] font-sans">
+    <main className="flex items-center justify-center min-h-screen bg-(image:--carpet) bg-size-[450px] bg-center font-sans">
       <div className="flex flex-col gap-6 items-center justify-center">
         <h1 className="text-7xl font-bold text-white text-shadow-lg text-shadow-2xl">
           {isGameOver
