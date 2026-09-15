@@ -23,8 +23,9 @@ export function separateDice(cv: typeof OpenCv, binary: OpenCv.Mat): void {
         if (area < 450 || area > binary.rows * binary.cols * 0.3) continue;
         const hull = own(new cv.Mat());
         cv.convexHull(contour, hull);
-        // Leave room for raster rounding on wider contacts at different scales.
-        if (area / cv.contourArea(hull) > 0.92) continue;
+        // Tightly aligned dice can have shallow contact notches and fill most
+        // of their convex hull. Let the split checks validate those candidates.
+        if (area / cv.contourArea(hull) > 0.96) continue;
 
         const bounds = cv.boundingRect(contour);
         const { x, y, width, height } = bounds;

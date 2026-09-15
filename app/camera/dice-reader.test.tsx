@@ -3,6 +3,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import DiceReader from "./dice-reader";
 import { detectDiceOpenCv } from "./opencv-dice";
 import type { DieValue } from "./dice-types";
+import { motionFrame } from "./__fixtures__/motion-frames";
 
 vi.mock("./opencv-dice", () => ({ detectDiceOpenCv: vi.fn() }));
 vi.mock("./opencv-runtime", () => ({ loadOpenCv: () => Promise.resolve({ cv: {} }) }));
@@ -19,8 +20,10 @@ it.each(["steady", "flickering"])("confirms %s readings, then freezes indicators
   Object.defineProperties(video, { readyState: { value: 2 }, videoWidth: { value: 640 }, videoHeight: { value: 480 } });
   const fillText = vi.fn();
   const strokeRect = vi.fn();
+  const clearRect = vi.fn();
+  let image = motionFrame(([1, 4, 2] as const).map((value, i) => ({ value, x: i * 80, y: 40, width: 50, height: 50 })));
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
-    drawImage: vi.fn(), getImageData: vi.fn().mockReturnValue({}), clearRect: vi.fn(),
+    drawImage: vi.fn(), getImageData: vi.fn().mockImplementation(() => image), clearRect,
     strokeRect, fillRect: vi.fn(), fillText,
   } as unknown as CanvasRenderingContext2D);
   const log = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -33,30 +36,33 @@ it.each(["steady", "flickering"])("confirms %s readings, then freezes indicators
 
   await attempt();
   expect(fillText.mock.calls.slice(-3).map(([value]) => value)).toEqual(["1", "4", "2"]);
-  for (let i = 1; i < (mode === "steady" ? 7 : 11); i++) {
-    values = mode === "flickering" && (i === 1 || i === 5) ? [1, 4, 6] : [1, 4, 2];
+  for (let i = 1; i < 7; i++) {
+    values = mode === "flickering" && i === 1 ? [1, 4, 6] : [1, 4, 2];
     await attempt();
-    if (mode === "flickering" && i < 10) {
+    if (mode === "flickering" && i < 6) {
       expect(log).not.toHaveBeenCalled();
-      expect(screen.getByText(/agreeing readings · need 8/)).toBeTruthy();
+      expect(screen.getByText(/\/6 agreeing readings · need 5/)).toBeTruthy();
     }
   }
   expect(log).toHaveBeenCalledTimes(1);
   expect(screen.getByRole("status").textContent).toBe("Last roll: 1 · 4 · 2");
 
-  values = [1, 4, 6];
-  offset = 2;
+  const redraws = clearRect.mock.calls.length;
+  offset = 30;
   for (let i = 0; i < 15; i++) {
+    values = i < 8 ? [] : [1, 4, 6];
     await attempt();
     expect(screen.getByText("Roll confirmed")).toBeTruthy();
     expect(fillText.mock.calls.slice(-3).map(([value]) => value)).toEqual(["1", "4", "2"]);
     expect(strokeRect.mock.calls.slice(-3).map(([x]) => x)).toEqual([0, 80, 160]);
   }
+  expect(clearRect).toHaveBeenCalledTimes(redraws);
   expect(log).toHaveBeenCalledTimes(1);
   expect(screen.getByRole("status").textContent).toBe("Last roll: 1 · 4 · 2");
 
   // A new throw moves the dice, unlocking the previous confirmation.
   offset = 80;
+  image = motionFrame(values.map((value, i) => ({ value, x: i * 80 + offset, y: 40, width: 50, height: 50 })));
   for (let i = 0; i < 10; i++) await attempt();
   expect(log).toHaveBeenCalledTimes(2);
   expect(screen.getByRole("status").textContent).toBe("Last roll: 1 · 4 · 6");

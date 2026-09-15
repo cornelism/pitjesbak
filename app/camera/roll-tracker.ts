@@ -2,8 +2,8 @@ import type { DetectedDie, DieValue } from "./dice-types";
 
 const SETTLE_MS = 900;
 const REARM_MS = 400;
-export const RECOVERY_ATTEMPTS = 10;
-export const RECOVERY_MATCHES = 8;
+export const RECOVERY_ATTEMPTS = 6;
+export const RECOVERY_MATCHES = 5;
 
 export interface RollTrackingState {
   roll: DieValue[] | null;
@@ -58,8 +58,8 @@ function findAgreement(attempts: readonly (readonly DetectedDie[])[], expectedCo
 }
 
 /**
- * Confirm steady rolls normally; use eight-of-ten agreement after flicker.
- * Confirmed rolls stay frozen until sustained motion/removal rearms detection.
+ * Confirm steady rolls normally; use five-of-six agreement after flicker.
+ * Confirmed rolls stay frozen until sustained camera motion rearms detection.
  */
 export function createRollTracker(expectedCount: number) {
   let candidate: readonly DetectedDie[] = [];
@@ -79,11 +79,10 @@ export function createRollTracker(expectedCount: number) {
     matchingAttempts = 0;
   }
 
-  return (dice: readonly DetectedDie[], now: number): RollTrackingState => {
+  return (dice: readonly DetectedDie[], now: number, cameraMoved = false): RollTrackingState => {
     const complete = dice.length === expectedCount;
     if (confirmedDice) {
-      const newThrow = !dice.length || (complete && !sameDice(confirmedDice, dice, false));
-      movementSince = newThrow ? movementSince ?? now : null;
+      movementSince = cameraMoved ? movementSince ?? now : null;
       // Ignore value changes and small jitter after confirmation. Only a new
       // throw can unlock the roll, even if a stationary misread persists.
       if (movementSince === null || now - movementSince < REARM_MS) {

@@ -72,14 +72,17 @@ logging. The captured real-camera fixtures read **3, 5, 3**, **6, 1, 5**, and
 - Green boxes label recognized dice; **Last roll** shows the last settled reading.
 
 Steady readings settle after 900 ms. If stationary values change or detections
-drop out, confirmation uses the last ten attempts (about 1.5 seconds at the current
-sampling rate). Eight must agree on every die, and the current reading must match
-that majority. Up to two misreads or incomplete detections are tolerated; an even
+drop out, confirmation uses the last six attempts (about 0.8 seconds from the first
+to the sixth reading). Five must agree on every die, and the current reading must match
+that majority. One misread or incomplete detection is tolerated; an even
 split remains uncertain. Small box shifts and size changes are tolerated, while
 movement to a new position discards old votes. Once confirmed, the values, marker
 positions and confirmation status stay frozen despite subsequent misreads.
-Removal or clear movement lasting
-at least 400 ms unlocks detection for a new throw with normal settling again.
+Movement or removal visible in the camera pixels for at least 400 ms unlocks
+detection for a new throw with normal settling again. Recognition dropouts and
+changing detection boxes alone cannot unlock a confirmed roll. Motion checks
+compare the image around each confirmed die and compensate for overall exposure
+changes. Confirmed markers are drawn once and held until the next throw.
 
 The angle calculation estimates the projected top depth as `width × cos(angle)`.
 The remaining vertical extent is the visible side of the cube. The detector removes

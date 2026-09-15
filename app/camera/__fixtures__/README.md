@@ -1,5 +1,18 @@
 # Real camera fixtures
 
+## touching-dice-1-1-3*.png
+
+- Captured on 2026-09-16 directly from the browser video with **Save camera frame**.
+- Original unannotated 640 × 480 camera pixels at the **45°** control setting.
+- Manually read top faces, ordered left to right: **1, 1, 3** (total **5**).
+- The tight diagonal chain fills about 93.3% of its convex hull. The previous
+  92% cutoff skipped separation, leaving one merged contour with five pips of
+  inconsistent sizes and no recognized dice.
+- Allowing candidates up to 96% lets the existing opposing-notch cuts separate
+  the three faces while preserving about 96.7% of the silhouette and all pips.
+- Tests cover the original frame at 40°, 45° and 50°, moderate exposure changes,
+  and the later `-live` capture at 45°.
+
 ## touching-dice-1-4-2*.png
 
 - Captured on 2026-09-16 directly from the browser video with **Save camera frame**.

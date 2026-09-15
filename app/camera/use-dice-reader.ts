@@ -6,6 +6,7 @@ import type { DetectedDie } from "./dice-types";
 import { cameraFrameSize } from "./frame-size";
 import { detectDiceOpenCv } from "./opencv-dice";
 import { loadOpenCv } from "./opencv-runtime";
+import { createRollMotionTracker } from "./roll-motion";
 import { createRollTracker, RECOVERY_ATTEMPTS, RECOVERY_MATCHES, type RollTrackingState } from "./roll-tracker";
 
 const FRAME_INTERVAL_MS = 160;
@@ -49,6 +50,8 @@ export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>) {
   useEffect(() => {
     const frame = document.createElement("canvas");
     const trackRoll = createRollTracker(expectedCount);
+    const motion = createRollMotionTracker();
+    let displayedMarkers: readonly DetectedDie[] | null = null;
     let timer: ReturnType<typeof setTimeout>;
     let active = true;
     let cv: typeof OpenCv | null = null;
@@ -67,6 +70,7 @@ export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>) {
         if (frame.width !== width || frame.height !== height) {
           frame.width = overlay.width = width;
           frame.height = overlay.height = height;
+          displayedMarkers = null;
         }
         const context = frame.getContext("2d", { willReadFrequently: true });
         const drawing = overlay.getContext("2d");
@@ -76,14 +80,19 @@ export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>) {
         }
 
         context.drawImage(video, 0, 0, width, height);
-        const dice = detectDiceOpenCv(cv, context.getImageData(0, 0, width, height), cameraTilt);
-        const tracked = trackRoll(dice, performance.now());
+        const image = context.getImageData(0, 0, width, height);
+        const dice = detectDiceOpenCv(cv, image, cameraTilt);
+        const tracked = trackRoll(dice, performance.now(), motion.hasMoved(image));
         const holdMarkers = tracked.confirmedDice.length > 0 || tracked.recovering;
         const markers = holdMarkers ? tracked.confirmedDice : dice;
-        drawMarkers(drawing, width, height, markers);
+        if (markers !== displayedMarkers) {
+          drawMarkers(drawing, width, height, markers);
+          displayedMarkers = markers;
+        }
 
         const { roll } = tracked;
         if (roll) {
+          motion.capture(image, tracked.confirmedDice);
           console.log("[Dice roll]", {
             dice: roll,
             total: roll.reduce<number>((sum, value) => sum + value, 0),

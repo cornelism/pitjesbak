@@ -7,13 +7,13 @@ function roll(values: DieValue[] = [2, 4, 6], offset = 0): DetectedDie[] {
 }
 
 function recover(track: ReturnType<typeof createRollTracker>, dice = roll(), start = 1000) {
-  for (let i = 0; i < 9; i++) {
+  for (let i = 0; i < 5; i++) {
     const state = track(dice, start + i * 160);
     expect(state.roll).toBeNull();
     expect(state.recovering).toBe(true);
     expect(state.matchingAttempts).toBe(i + 1);
   }
-  return track(dice, start + 9 * 160);
+  return track(dice, start + 5 * 160);
 }
 
 describe("roll tracker", () => {
@@ -31,52 +31,52 @@ describe("roll tracker", () => {
     expect(recover(track).roll).toEqual([2, 4, 6]);
   });
 
-  it("does not substitute elapsed time for ten attempts while recovering", () => {
+  it("does not substitute elapsed time for six attempts while recovering", () => {
     const track = createRollTracker(3);
     track(roll([2, 4, 4]), 0);
-    for (let i = 1; i < 10; i++) expect(track(roll(), i * 1000).roll).toBeNull();
-    expect(track(roll(), 10000).roll).toEqual([2, 4, 6]);
+    for (let i = 1; i < 6; i++) expect(track(roll(), i * 1000).roll).toBeNull();
+    expect(track(roll(), 6000).roll).toEqual([2, 4, 6]);
   });
 
   it.each(([[], [2, 4], [2, 4, 6, 1]] satisfies DieValue[][]).map((values) => ({ values })))("tolerates one wrong dice count $values in the recovery window", ({ values }) => {
     const track = createRollTracker(3);
     track(roll([2, 4, 4]), 0);
-    for (let i = 1; i <= 9; i++) track(roll(), i * 160);
-    expect(track(roll(values), 1600).roll).toBeNull();
-    expect(track(roll(), 1760).roll).toEqual([2, 4, 6]);
+    for (let i = 1; i <= 5; i++) track(roll(), i * 160);
+    expect(track(roll(values), 960).roll).toBeNull();
+    expect(track(roll(), 1120).roll).toEqual([2, 4, 6]);
   });
 
-  it("confirms an eight-of-ten majority despite two isolated misreads", () => {
+  it("confirms a five-of-six majority despite one isolated misread", () => {
     const track = createRollTracker(3);
     track(roll([2, 4, 4]), 0);
-    for (let i = 1; i <= 10; i++) {
-      const state = track(roll(i === 4 || i === 8 ? [2, 4, 4] : [2, 4, 6]), i * 160);
-      expect(state.roll).toEqual(i === 10 ? [2, 4, 6] : null);
+    for (let i = 1; i <= 6; i++) {
+      const state = track(roll(i === 4 ? [2, 4, 4] : [2, 4, 6]), i * 160);
+      expect(state.roll).toEqual(i === 6 ? [2, 4, 6] : null);
     }
   });
 
-  it("does not confirm when more than two of ten readings disagree", () => {
+  it("does not confirm when two of six readings disagree", () => {
     const track = createRollTracker(3);
     track(roll([2, 4, 4]), 0);
     for (let i = 1; i <= 30; i++) {
-      expect(track(roll(i % 10 < 3 ? [2, 4, 4] : [2, 4, 6]), i * 160).roll).toBeNull();
+      expect(track(roll(i % 6 < 2 ? [2, 4, 4] : [2, 4, 6]), i * 160).roll).toBeNull();
     }
   });
 
   it("expires old votes instead of accumulating agreement across attempts", () => {
     const track = createRollTracker(3);
     track(roll([2, 4, 4]), 0);
-    for (let i = 1; i <= 8; i++) track(roll(), i * 160);
-    for (let i = 9; i <= 13; i++) expect(track([], i * 160).roll).toBeNull();
-    expect(track(roll(), 2240).roll).toBeNull();
+    for (let i = 1; i <= 5; i++) track(roll(), i * 160);
+    for (let i = 6; i <= 8; i++) expect(track([], i * 160).roll).toBeNull();
+    expect(track(roll(), 1440).roll).toBeNull();
   });
 
   it("waits for the current reading to agree with the majority", () => {
     const track = createRollTracker(3);
     track(roll([2, 4, 4]), 0);
-    for (let i = 1; i <= 9; i++) track(roll(), i * 160);
-    expect(track(roll([2, 4, 4]), 1600).roll).toBeNull();
-    expect(track(roll(), 1760).roll).toEqual([2, 4, 6]);
+    for (let i = 1; i <= 5; i++) track(roll(), i * 160);
+    expect(track(roll([2, 4, 4]), 960).roll).toBeNull();
+    expect(track(roll(), 1120).roll).toEqual([2, 4, 6]);
   });
 
   it("does not mistake accumulating small movements for stationary jitter", () => {
@@ -99,7 +99,7 @@ describe("roll tracker", () => {
   it("discards recovery votes when dice move to a new position", () => {
     const track = createRollTracker(3);
     track(roll([2, 4, 4]), 0);
-    for (let i = 1; i <= 9; i++) track(roll(), i * 160);
+    for (let i = 1; i <= 5; i++) track(roll(), i * 160);
     expect(track(roll([2, 4, 6], 80), 1600).roll).toBeNull();
     expect(track(roll([2, 4, 6], 80), 2500).roll).toEqual([2, 4, 6]);
   });
@@ -154,10 +154,10 @@ describe("roll tracker", () => {
     track(roll(), 0);
     const confirmed = track(roll(), 900).confirmedDice;
     track(roll([2, 4, 4]), 1000);
-    expect(track(roll([2, 4, 4], 80), 2000).confirmedDice).toBe(confirmed);
+    expect(track(roll([2, 4, 4], 80), 2000, true).confirmedDice).toBe(confirmed);
     track(roll([2, 4, 4]), 2200);
-    expect(track(roll([2, 4, 4], 80), 2400).confirmedDice).toBe(confirmed);
-    expect(track(roll([2, 4, 4], 80), 2800).confirmedDice).toEqual([]);
+    expect(track(roll([2, 4, 4], 80), 2400, true).confirmedDice).toBe(confirmed);
+    expect(track(roll([2, 4, 4], 80), 2800, true).confirmedDice).toEqual([]);
     expect(track(roll([2, 4, 4], 80), 3700).roll).toEqual([2, 4, 4]);
   });
 
@@ -165,8 +165,8 @@ describe("roll tracker", () => {
     const track = createRollTracker(3);
     track(roll(), 0);
     track(roll(), 900);
-    track([], 1000);
-    expect(track([], 1500).confirmedDice).toEqual([]);
+    track([], 1000, true);
+    expect(track([], 1500, true).confirmedDice).toEqual([]);
     expect(track(roll(), 1600).recovering).toBe(false);
     expect(track(roll(), 2500).roll).toEqual([2, 4, 6]);
   });
@@ -175,8 +175,20 @@ describe("roll tracker", () => {
     const track = createRollTracker(3);
     for (let time = 0; time <= 2000; time += 100) expect(track(roll([2, 4, 6], time / 10), time).roll).toBeNull();
     expect(track(roll([2, 4, 6], 200), 2900).roll).toEqual([2, 4, 6]);
-    track(roll([2, 4, 6], 250), 3100);
-    expect(track(roll([2, 4, 6], 280), 3600).confirmedDice).toEqual([]);
+    track(roll([2, 4, 6], 250), 3100, true);
+    expect(track(roll([2, 4, 6], 280), 3600, true).confirmedDice).toEqual([]);
     expect(track(roll([2, 4, 6], 280), 4500).roll).toEqual([2, 4, 6]);
+  });
+
+  it("keeps confirmation through prolonged recognition dropouts without camera motion", () => {
+    const track = createRollTracker(3);
+    track(roll(), 0);
+    const confirmed = track(roll(), 900).confirmedDice;
+    for (let i = 0; i < 60; i++) {
+      const state = track(i % 2 ? [] : roll([1, 1, 1], 30), 1000 + i * 160, false);
+      expect(state.confirmedDice).toBe(confirmed);
+      expect(state.recovering).toBe(false);
+      expect(state.roll).toBeNull();
+    }
   });
 });

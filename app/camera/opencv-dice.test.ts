@@ -47,6 +47,11 @@ const touchingLiveFrame = { width: touchingLivePng.width, height: touchingLivePn
 const touchingJitterPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/touching-dice-1-4-2-jitter.png", import.meta.url)));
 const touchingJitterFrame = { width: touchingJitterPng.width, height: touchingJitterPng.height, data: new Uint8ClampedArray(touchingJitterPng.data) };
 
+const shallowChainPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/touching-dice-1-1-3.png", import.meta.url)));
+const shallowChainFrame = { width: shallowChainPng.width, height: shallowChainPng.height, data: new Uint8ClampedArray(shallowChainPng.data) };
+const shallowChainLivePng = PNG.sync.read(readFileSync(new URL("./__fixtures__/touching-dice-1-1-3-live.png", import.meta.url)));
+const shallowChainLiveFrame = { width: shallowChainLivePng.width, height: shallowChainLivePng.height, data: new Uint8ClampedArray(shallowChainLivePng.data) };
+
 function cropNewRoll(x: number, y: number, width: number, height: number) {
   const data = new Uint8ClampedArray(width * height * 4);
   for (let row = 0; row < height; row++) {
@@ -102,6 +107,19 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it("reads the 1, 1, 3 chain in a later live camera frame", () => {
+    expect(detectDiceOpenCv(cv, shallowChainLiveFrame, 45).map((die) => die.value)).toEqual([1, 1, 3]);
+  });
+
+  it.each([40, 45, 50])("separates the captured 1, 1, 3 chain with shallow contact notches at %i degrees", (angle) => {
+    expect(detectDiceOpenCv(cv, shallowChainFrame, angle).map((die) => die.value)).toEqual([1, 1, 3]);
+  });
+
+  it.each([0.8, 1.15])("reads the 1, 1, 3 chain at exposure multiplier %s", (exposure) => {
+    const data = shallowChainFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...shallowChainFrame, data }, 45).map((die) => die.value)).toEqual([1, 1, 3]);
+  });
+
   it("reads the touching 1, 4, 2 chain through contour jitter", () => {
     expect(detectDiceOpenCv(cv, touchingJitterFrame, 50).map((die) => die.value)).toEqual([1, 4, 2]);
   });
