@@ -1,5 +1,22 @@
 # Real camera fixtures
 
+## touching-dice-1-4-2*.png
+
+- Captured on 2026-09-16 directly from the browser video with **Save camera frame**.
+- Original unannotated 640 × 480 camera pixels; no screen capture or preprocessing.
+- Camera angle control: **50° away from overhead**, not a physical measurement.
+- Manually read top faces, ordered left to right: **1, 4, 2** (total **7**).
+- All three dice join into one contour. Gentle opening leaves it connected;
+  stronger opening erases the faces before separating the contacts.
+- Opposing contour indentations identify the two contact boundaries. The cuts
+  must preserve pip holes and leave substantial connected face regions.
+- The `-live` and `-jitter` raw frames cover a slight framing shift and changing
+  contour corners. Stronger indentations must take precedence over closer,
+  weaker dents along rounded edges.
+- Tests replay the captured 50° setting with exposure changes. At 45°,
+  the two can still fail the existing minimum pip-spacing check; this fixture
+  does not establish angle tolerance for that separate validation limit.
+
 ## bright-dice-1-1-1.png
 
 - Captured on 2026-09-16 directly from the browser video with **Save camera frame**.

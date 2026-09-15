@@ -71,6 +71,12 @@ logging. The captured real-camera fixtures read **3, 5, 3**, **6, 1, 5**, and
   the actual view. This setting resets to 45° when the camera restarts.
 - Green boxes label recognized dice; **Last roll** shows the last settled reading.
 
+Steady readings settle after 900 ms. If stationary values change or detections
+drop out, confirmation requires ten consecutive matching readings (about 1.5
+seconds at the current sampling rate). A different value or wrong dice count
+restarts that streak. During recovery, the markers keep the last confirmed roll.
+Sustained removal or movement starts a new throw with normal settling again.
+
 The angle calculation estimates the projected top depth as `width × cos(angle)`.
 The remaining vertical extent is the visible side of the cube. The detector removes
 that side extent column by column before validating pips. If that estimate fails,
@@ -101,7 +107,10 @@ then expands it) and applies the cut only if multiple substantial pieces remain
 and at least 85% of the silhouette is preserved. If a gentle opening leaves the
 faces joined, it retries with a larger opening, retaining the same area and
 minimum piece-size checks. Pip holes retain their original pixels. This handles
-contacts with a distinct neck; broad overlaps can still require moving dice apart.
+contacts with a distinct neck. If opening fails, a fallback pairs opposing
+indentations in the outline and cuts across the contacts. It rejects cuts near
+pip holes or cuts that leave small fragments. Broad overlaps without clear
+indentations can still require moving dice apart.
 
 Face selection happens before pip counting. With an upright camera, an isolated
 square top projects no taller than its width; a whole cube has additional vertical

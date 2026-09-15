@@ -1,9 +1,10 @@
 import type * as OpenCv from "@techstark/opencv-js";
+import { findFaceNeckCuts } from "./face-neck-cuts";
+import type { Point } from "./face-perspective";
 
-/** Remove narrow connections between otherwise separate dice in a binary mask.
- * Work on filled silhouettes so erosion never enlarges or merges pip holes.
- * Only apply a split when it leaves multiple substantial pieces and retains
- * most of the silhouette; convex single dice remain untouched.
+/** Split joined dice using their filled silhouettes, preserving pip holes.
+ * Open narrow contacts first; for tight chains, try opposing indentations.
+ * Only retain splits with multiple substantial pieces and most of the area.
  */
 export function separateDice(cv: typeof OpenCv, binary: OpenCv.Mat): void {
   const contours = new cv.MatVector();
@@ -34,30 +35,62 @@ export function separateDice(cv: typeof OpenCv, binary: OpenCv.Mat): void {
         const opened = own(new cv.Mat());
         const pieces = own(new cv.MatVector());
         const pieceHierarchy = own(new cv.Mat());
-        // Try a gentle opening first, then a larger one for wider contacts.
-        // Always start from the original silhouette, and keep the same minimum
-        // retained area and piece size at both strengths.
+        const region = own(binary.roi(bounds));
+        const removed = own(new cv.Mat());
+
+        function applySplit(protectPips = false): boolean {
+          if (cv.countNonZero(opened) < originalPixels * 0.85) return false;
+          cv.findContours(opened, pieces, pieceHierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+          if (pieces.size() < 2) return false;
+          for (let j = 0; j < pieces.size(); j++) {
+            const piece = own(pieces.get(j));
+            if (cv.contourArea(piece) < 225) return false;
+          }
+          cv.subtract(silhouette, opened, removed);
+          if (protectPips) {
+            // A cut must leave a light rim around every existing pip hole.
+            const holes = own(new cv.Mat());
+            cv.subtract(silhouette, region, holes);
+            const margin = own(new cv.Mat());
+            const kernel = own(cv.Mat.ones(3, 3, cv.CV_8UC1));
+            cv.dilate(removed, margin, kernel);
+            cv.bitwise_and(margin, holes, margin);
+            if (cv.countNonZero(margin)) return false;
+          }
+          // Remove only pixels belonging to this contour, preserving neighbors
+          // that happen to share its rectangular region.
+          region.setTo(new cv.Scalar(0), removed);
+          return true;
+        }
+
+        let separated = false;
         for (const divisor of [8, 4]) {
           const size = Math.max(3, 2 * Math.floor(Math.min(width, height) / divisor) + 1);
           const kernel = own(cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(size, size)));
           cv.morphologyEx(silhouette, opened, cv.MORPH_OPEN, kernel,
             new cv.Point(-1, -1), 1, cv.BORDER_CONSTANT, new cv.Scalar(0));
           if (cv.countNonZero(opened) < originalPixels * 0.85) break;
-
-          cv.findContours(opened, pieces, pieceHierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-          if (pieces.size() < 2) continue;
-          let substantialPieces = true;
-          for (let j = 0; j < pieces.size(); j++) {
-            const piece = own(pieces.get(j));
-            if (cv.contourArea(piece) < 225) substantialPieces = false;
-          }
-          if (!substantialPieces) continue;
-          const removed = own(new cv.Mat());
-          cv.subtract(silhouette, opened, removed);
-          const region = own(binary.roi(bounds));
-          region.setTo(new cv.Scalar(0), removed);
-          break;
+          if (applySplit()) { separated = true; break; }
         }
+        if (separated) continue;
+
+        // Opening can erase tightly packed faces before their contacts split.
+        // Join inward-facing notches instead, without selecting or moving pips.
+        const distance = own(new cv.Mat());
+        cv.distanceTransform(silhouette, distance, cv.DIST_L2, cv.DIST_MASK_5);
+        const radius = cv.minMaxLoc(distance, silhouette).maxVal;
+        const polygon = own(new cv.Mat());
+        cv.approxPolyDP(contour, polygon, Math.max(1, radius * 0.08), true);
+        const points = Array.from({ length: polygon.rows }, (_, j): Point => [
+          polygon.data32S[j * 2] - x, polygon.data32S[j * 2 + 1] - y,
+        ]);
+        const cuts = findFaceNeckCuts(points, radius * 2);
+        if (!cuts.length) continue;
+        silhouette.copyTo(opened);
+        for (const [a, b] of cuts) {
+          cv.line(opened, new cv.Point(...a), new cv.Point(...b), new cv.Scalar(0), Math.max(1, Math.round(radius * 0.08)));
+        }
+        applySplit(true);
       } finally {
         for (const object of owned.reverse()) object.delete();
       }

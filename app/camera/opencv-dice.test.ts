@@ -38,6 +38,15 @@ const touchingRollFrame = { width: touchingRollPng.width, height: touchingRollPn
 const brightRollPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/bright-dice-1-1-1.png", import.meta.url)));
 const brightRollFrame = { width: brightRollPng.width, height: brightRollPng.height, data: new Uint8ClampedArray(brightRollPng.data) };
 
+const touchingChainPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/touching-dice-1-4-2.png", import.meta.url)));
+const touchingChainFrame = { width: touchingChainPng.width, height: touchingChainPng.height, data: new Uint8ClampedArray(touchingChainPng.data) };
+
+const touchingLivePng = PNG.sync.read(readFileSync(new URL("./__fixtures__/touching-dice-1-4-2-live.png", import.meta.url)));
+const touchingLiveFrame = { width: touchingLivePng.width, height: touchingLivePng.height, data: new Uint8ClampedArray(touchingLivePng.data) };
+
+const touchingJitterPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/touching-dice-1-4-2-jitter.png", import.meta.url)));
+const touchingJitterFrame = { width: touchingJitterPng.width, height: touchingJitterPng.height, data: new Uint8ClampedArray(touchingJitterPng.data) };
+
 function cropNewRoll(x: number, y: number, width: number, height: number) {
   const data = new Uint8ClampedArray(width * height * 4);
   for (let row = 0; row < height; row++) {
@@ -93,6 +102,23 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it("reads the touching 1, 4, 2 chain through contour jitter", () => {
+    expect(detectDiceOpenCv(cv, touchingJitterFrame, 50).map((die) => die.value)).toEqual([1, 4, 2]);
+  });
+
+  it("reads the touching 1, 4, 2 chain in a later live frame", () => {
+    expect(detectDiceOpenCv(cv, touchingLiveFrame, 50).map((die) => die.value)).toEqual([1, 4, 2]);
+  });
+
+  it("reads the captured chain of touching dice: 1, 4, 2", () => {
+    expect(detectDiceOpenCv(cv, touchingChainFrame, 50).map((die) => die.value)).toEqual([1, 4, 2]);
+  });
+
+  it.each([0.8, 1.15])("reads the touching 1, 4, 2 chain at exposure multiplier %s", (exposure) => {
+    const data = touchingChainFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...touchingChainFrame, data }, 50).map((die) => die.value)).toEqual([1, 4, 2]);
+  });
+
   it("reads the brightly lit captured 1, 1, 1 roll at 50 degrees", () => {
     expect(detectDiceOpenCv(cv, brightRollFrame, 50).map((die) => die.value)).toEqual([1, 1, 1]);
   });

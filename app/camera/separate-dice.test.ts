@@ -103,6 +103,31 @@ describe("separateDice", () => {
     }
   });
 
+  it.each([false, true])("splits rounded chains only when the cut avoids pips (pip on contact: %s)", (pipOnContact) => {
+    const mask = cv.Mat.zeros(160, 200, cv.CV_8UC1);
+    const labels = new cv.Mat();
+    try {
+      const centers = [45, 87, 129];
+      for (let y = 0; y < mask.rows; y++) {
+        for (let x = 0; x < mask.cols; x++) {
+          const face = centers.some((cx) => Math.hypot(x - cx, y - 80) < 24);
+          const pip = centers.some((cx) => Math.hypot(x - cx, y - 80) < 4)
+            || (pipOnContact && Math.hypot(x - 66, y - 80) < 4);
+          if (face && !pip) mask.data[y * mask.cols + x] = 255;
+        }
+      }
+      const before = new Uint8Array(mask.data);
+      expect(cv.connectedComponents(mask, labels)).toBe(2);
+      separateDice(cv, mask);
+      expect(cv.connectedComponents(mask, labels)).toBe(pipOnContact ? 2 : 4);
+      if (pipOnContact) expect(mask.data).toEqual(before);
+      for (const x of centers) expect(mask.data[80 * mask.cols + x]).toBe(0);
+    } finally {
+      labels.delete();
+      mask.delete();
+    }
+  });
+
   it("accepts an empty camera mask", () => {
     const mask = cv.Mat.zeros(100, 100, cv.CV_8UC1);
     try {

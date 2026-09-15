@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import type * as OpenCv from "@techstark/opencv-js";
 import { detectDiceOpenCv } from "./opencv-dice";
 import { loadOpenCv } from "./opencv-runtime";
-import { createRollTracker } from "./roll-tracker";
+import { createRollTracker, RECOVERY_ATTEMPTS } from "./roll-tracker";
 import { cameraFrameSize } from "./frame-size";
 
 const FRAME_INTERVAL_MS = 160;
@@ -51,10 +51,11 @@ export default function DiceReader({ videoRef }: DiceReaderProps) {
 
         context.drawImage(video, 0, 0, width, height);
         const dice = detectDiceOpenCv(cv, context.getImageData(0, 0, width, height), cameraTilt);
+        const tracked = trackRoll(dice, performance.now());
         drawing.clearRect(0, 0, width, height);
         drawing.lineWidth = 2;
         drawing.font = "bold 16px sans-serif";
-        for (const die of dice) {
+        for (const die of tracked.recovering ? tracked.confirmedDice : dice) {
           drawing.strokeStyle = "#34d399";
           drawing.strokeRect(die.x, die.y, die.width, die.height);
           drawing.fillStyle = "#34d399";
@@ -63,7 +64,7 @@ export default function DiceReader({ videoRef }: DiceReaderProps) {
           drawing.fillText(String(die.value), die.x + 6, die.y + 17);
         }
 
-        const roll = trackRoll(dice, performance.now());
+        const { roll } = tracked;
         if (roll) {
           console.log("[Dice roll]", {
             dice: roll,
@@ -72,8 +73,10 @@ export default function DiceReader({ videoRef }: DiceReaderProps) {
           });
           setLastRoll(roll.join(" · "));
         }
-        setStatus(dice.length === expectedCount
-          ? `${dice.length} dice visible · hold still to read`
+        setStatus(tracked.recovering
+          ? `Stabilizing dice · ${tracked.matchingAttempts}/${RECOVERY_ATTEMPTS} matching readings`
+          : tracked.confirmedDice.length ? "Roll confirmed"
+          : dice.length === expectedCount ? `${dice.length} dice visible · hold still to read`
           : `${dice.length} of ${expectedCount} dice visible`);
       } catch {
         setStatus("Dice reading failed. Stop and restart the camera to retry.");
