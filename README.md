@@ -57,27 +57,37 @@ Camera access requires HTTPS or localhost. Use **Go to game** to open the dice g
 
 ### Read physical dice
 
-While the camera runs, the app reads light dice with dark pips on a darker,
-plain surface. Angled views are **experimental and currently unreliable with real
-dice**. Synthetic tests cover isolated faces tilted 45°, die rotation, and rounded
-corners; they do not establish support for a real cube viewed at 45°. Provide even
-light and keep the dice apart and large enough to see clearly.
-Green boxes show the recognized faces. Dark dice, overlapping dice, and top faces
-that blend into visible side faces remain unsupported. Real-camera performance
-depends on lighting and how clearly the top face can be separated.
+The camera uses **OpenCV.js**, loaded locally when recognition starts. It finds
+whole dice and their enclosed dark pips, estimates the top-face region from the
+camera angle, and checks the top pip pattern. Side-face pips are excluded before
+logging. The captured real-camera fixtures read **3, 5, 3** and **6, 1, 5** at 45°.
+
+- Use light dice with dark pips on a darker, plain surface and keep dice apart.
+- Keep the camera upright (the visible sides should extend toward the bottom of
+  the image).
+- Set **Camera angle** to the angle away from overhead: **0°** when looking straight
+  down, or approximately **45°** for the slanted setup. Adjust in 5° steps to match
+  the actual view. This setting resets to 45° when the camera restarts.
+- Green boxes label recognized dice; **Last roll** shows the last settled reading.
+
+The angle calculation estimates the projected top depth as `width × cos(angle)`.
+The remaining vertical extent is the visible side of the cube. The detector removes
+that side extent column by column before validating pips. If that estimate fails,
+it can recognize a separated upper cluster of four to six pips by correcting
+the layout's scale and shear. It requires a gap from side pips and a standard
+layout; overlapping clusters remain uncertain. Angled mode also preserves thin
+light rims around small pips with a lower threshold. Overhead mode uses
+four-corner perspective correction for isolated faces. OpenCV provides the
+[contour extraction](https://docs.opencv.org/4.13.0/d5/daa/tutorial_js_contours_begin.html)
+and ellipse measurements; this is a geometric detector, not a trained dice model.
+It still depends on contrast, visible pips, an upright camera, and approximately
+cubic dice. Touching/occluded dice and severe perspective can prevent readings.
 
 When a reading fails, use **Save camera frame** to download `dice-camera-frame.png`.
 It captures the current video at the detector's input resolution without green
 boxes or text, so the failing image can be replayed as a regression fixture. The
 button saves locally; it does not upload the frame. Include the expected die values
-when sharing a frame for debugging.
-
-At 45°, foreshortening alone reduces one dimension to `cos(45°) ≈ 0.707` of its
-original size. The detector estimates four face corners and uses a homography to
-map pip positions into a square before checking the pattern. This also corrects
-perspective taper, which a fixed `1.414×` stretch would miss. No angle setting or
-camera calibration is needed. See the
-[OpenCV perspective-correction reference](https://docs.opencv.org/4.11.0/d9/dab/tutorial_homography.html).
+and camera-angle setting when sharing a frame for debugging.
 
 Set **Dice to read** to the number you are throwing (default: 3). When that many
 faces stay consistent for about one second, the browser's developer console logs:
@@ -91,9 +101,19 @@ moving or removing the dice for at least 0.4 seconds allows the next roll to log
 including a repeat of the same values. Partial or unstable readings do not log.
 The last logged roll also appears on the preview. Processing stays in the browser;
 no images are uploaded. Recognition is heuristic and may need tuning against
-your camera and dice. Tests use synthetic frames, not real camera footage.
+your camera and dice. Tests cover the captured camera image, exposure variations,
+ray-cast 3D cubes with side pips, and synthetic isolated faces.
 
 ## Tests
 
 Run `npm test` for camera lifecycle, pixel recognition, and roll stability tests, or
 `npm run test:watch` during development.
+
+### OpenCV runtime
+
+`npm install`, `npm run dev`, and `npm run build` prepare the locally served
+`public/vendor/opencv.js` from the pinned `@techstark/opencv-js` package. The generated
+runtime is ignored by Git. No CDN or external inference service receives camera
+frames. The first camera start displays a loading message while OpenCV initializes;
+subsequent starts reuse it. All per-frame OpenCV matrices and contours are released
+explicitly to avoid growing WASM memory during capture.

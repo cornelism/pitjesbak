@@ -149,8 +149,8 @@ export default function CameraPreview() {
 
       <footer className="space-y-4 border-t border-white/10 p-5 sm:px-8">
         <p className="text-sm text-zinc-400">
-          Use light dice with dark pips on a darker surface. Keep the top faces clear and the dice apart.
-          Angled views are experimental; visible side faces can prevent correct readings.
+          OpenCV reads light dice with dark pips on a darker surface. Keep the camera upright and the dice apart.
+          Set Camera angle to 0° for overhead or about 45° for a slanted view.
           Settled rolls are logged to the browser console.
         </p>
         <div role="status" aria-live="polite" className="text-sm text-zinc-300">

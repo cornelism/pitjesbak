@@ -33,6 +33,48 @@ function readPattern(points: readonly Point[]): DieValue | null {
   return count;
 }
 
+type Pip = { point: Point; area: number };
+
+// Normalize both axes and shear using the cloud's covariance. Pair distances
+// then describe the pip layout independently of its affine camera projection.
+// Only non-collinear layouts (4–6) contain enough information for this check.
+function affineSignature(points: readonly Point[]): number[] | null {
+  const cx = points.reduce((sum, [x]) => sum + x, 0) / points.length;
+  const cy = points.reduce((sum, [, y]) => sum + y, 0) / points.length;
+  const centered = points.map(([x, y]): Point => [x - cx, y - cy]);
+  const xx = centered.reduce((sum, [x]) => sum + x * x, 0);
+  const xy = centered.reduce((sum, [x, y]) => sum + x * y, 0);
+  const yy = centered.reduce((sum, [, y]) => sum + y * y, 0);
+  const determinant = xx * yy - xy * xy;
+  if (determinant <= 0.025 * (xx + yy) ** 2) return null;
+  const sx = Math.sqrt(xx), sy = Math.sqrt(determinant / xx);
+  return signature(centered.map(([x, y]): Point => [x / sx, (y - xy / xx * x) / sy])).distances;
+}
+
+function readSeparatedTop(pips: readonly Pip[], width: number, height: number): DieValue | null {
+  const ordered = [...pips].sort((a, b) => a.point[1] - b.point[1]);
+  for (const count of [6, 5, 4] as const) {
+    if (ordered.length < count) continue;
+    const face = ordered.slice(0, count);
+    const lowest = face[count - 1].point[1];
+    const largestArea = Math.max(...face.map((pip) => pip.area));
+    if (largestArea / Math.min(...face.map((pip) => pip.area)) > 2.5) continue;
+    // Require a distinct upper cluster, separated from side pips by at least
+    // a pip radius. Never pick an arbitrary subset from overlapping faces.
+    if (ordered[count] && ordered[count].point[1] - lowest < 1.5 * Math.sqrt(largestArea / Math.PI)) continue;
+    const points = face.map((pip) => pip.point);
+    const xs = points.map(([x]) => x);
+    const cy = points.reduce((sum, [, y]) => sum + y, 0) / count;
+    const cx = xs.reduce((sum, x) => sum + x, 0) / count;
+    if (lowest > height * 0.6 || cy > height * 0.4 || Math.abs(cx / width - 0.5) > 0.18) continue;
+    if (Math.max(...xs) - Math.min(...xs) < width * 0.3) continue;
+    const actual = affineSignature(points);
+    const expected = affineSignature(patterns[count - 1]);
+    if (actual && expected && actual.every((distance, i) => Math.abs(distance - expected[i]) <= 0.09)) return count;
+  }
+  return null;
+}
+
 /** OpenCV finds whole cubes and enclosed pips. An upright camera's viewing angle
  * determines which part of each cube is its top face, before pattern validation.
  * cameraTilt is degrees away from overhead; zero preserves the entire face.
@@ -54,7 +96,10 @@ export function detectDiceOpenCv(
     const hierarchy = own(new cv.Mat());
     cv.cvtColor(source, gray, cv.COLOR_RGBA2GRAY);
     cv.GaussianBlur(gray, gray, new cv.Size(3, 3), 0);
-    cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
+    const threshold = cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
+    // Preserve narrow light rims around small, foreshortened pips. At the
+    // unadjusted Otsu threshold those holes can merge with the background.
+    if (cameraTilt > 0) cv.threshold(gray, binary, threshold * 0.75, 255, cv.THRESH_BINARY);
     cv.findContours(binary, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_NONE);
     const detected: DetectedDie[] = [];
     const tilt = Math.max(0, Math.min(60, cameraTilt)) * Math.PI / 180;
@@ -95,7 +140,8 @@ export function detectDiceOpenCv(
             ? ([px, py]: Point): Point => [px / (w - 1), py / ((w - 1) * Math.cos(tilt))]
             : faceRectifier(top, w, { id: 1, x: left, y: firstY, right, bottom });
           if (!rectify) continue;
-          const pips: { point: Point; area: number }[] = [];
+          const pips: Pip[] = [];
+          const allPips: Pip[] = [];
           for (let child = hierarchy.data32S[i * 4 + 2]; child !== -1; child = hierarchy.data32S[child * 4]) {
             const pip = contours.get(child);
             try {
@@ -107,12 +153,14 @@ export function detectDiceOpenCv(
               const m = cv.moments(pip);
               const px = m.m10 / m.m00 - x;
               const py = m.m01 / m.m00 - y;
+              allPips.push({ point: [px, py], area: pipArea });
               if (!top[Math.round(py) * w + Math.round(px)]) continue;
               pips.push({ point: rectify([px, py]), area: pipArea });
             } finally { pip.delete(); }
           }
-          if (!pips.length || Math.max(...pips.map((pip) => pip.area)) / Math.min(...pips.map((pip) => pip.area)) > 2.5) continue;
-          const value = readPattern(pips.map((pip) => pip.point));
+          const consistentPips = pips.length > 0 && Math.max(...pips.map((pip) => pip.area)) / Math.min(...pips.map((pip) => pip.area)) <= 2.5;
+          const value = (consistentPips ? readPattern(pips.map((pip) => pip.point)) : null)
+            ?? (tilt > 0 ? readSeparatedTop(allPips, w, h) : null);
           if (value) detected.push({ value, x, y, width: w, height: h });
         } finally { silhouette.delete(); }
       } finally { contour.delete(); }
