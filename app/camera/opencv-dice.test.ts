@@ -32,6 +32,9 @@ const sidePipsFrame = { width: sidePipsPng.width, height: sidePipsPng.height, da
 const closeRollPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/angled-dice-3-3-4.png", import.meta.url)));
 const closeRollFrame = { width: closeRollPng.width, height: closeRollPng.height, data: new Uint8ClampedArray(closeRollPng.data) };
 
+const touchingRollPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/angled-dice-2-2-6.png", import.meta.url)));
+const touchingRollFrame = { width: touchingRollPng.width, height: touchingRollPng.height, data: new Uint8ClampedArray(touchingRollPng.data) };
+
 function cropNewRoll(x: number, y: number, width: number, height: number) {
   const data = new Uint8ClampedArray(width * height * 4);
   for (let row = 0; row < height; row++) {
@@ -87,6 +90,19 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it("reads the captured touching dice with top faces 2, 2, 6", () => {
+    expect(detectDiceOpenCv(cv, touchingRollFrame, 45).map((die) => die.value)).toEqual([2, 2, 6]);
+  });
+
+  it.each([0.8, 1.15])("separates the 2, 2, 6 roll at exposure multiplier %s", (exposure) => {
+    const data = touchingRollFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...touchingRollFrame, data }, 45).map((die) => die.value)).toEqual([2, 2, 6]);
+  });
+
+  it.each([40, 50])("separates the 2, 2, 6 roll at nearby angle %i", (angle) => {
+    expect(detectDiceOpenCv(cv, touchingRollFrame, angle).map((die) => die.value)).toEqual([2, 2, 6]);
+  });
+
   it("reads the captured nearby dice with top faces 3, 3, 4", () => {
     expect(detectDiceOpenCv(cv, closeRollFrame, 45).map((die) => die.value)).toEqual([3, 3, 4]);
   });

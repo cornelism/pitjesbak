@@ -1,5 +1,16 @@
 # Real camera fixtures
 
+## angled-dice-2-2-6.png
+
+- Captured on 2026-09-16 directly from the browser video with **Save camera frame**.
+- Original unannotated 640 × 480 camera pixels; no screen capture or preprocessing.
+- Camera angle control: **45° away from overhead**, not a physical measurement.
+- Manually read top faces, ordered left to right: **2, 2, 6** (total **10**).
+- The back two and six share a wide connection in the thresholded image. The
+  original separation step leaves them joined, so only the front two is read.
+- Tests cover the raw frame, moderate exposure changes, and nearby angle settings.
+  Mask tests also cover wider contacts at multiple scales and preserve pip holes.
+
 ## angled-dice-3-3-4.png
 
 - Captured on 2026-09-16 directly from the browser video with **Save camera frame**.

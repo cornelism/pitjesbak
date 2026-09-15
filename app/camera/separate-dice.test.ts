@@ -28,8 +28,15 @@ function touchingFaces(scale = 1, bridgeHeight = 4) {
 }
 
 describe("separateDice", () => {
-  it.each([0.75, 1, 1.5])("separates connected faces without filling their pips at scale %s", (scale) => {
-    const mask = touchingFaces(scale);
+  it.each([
+    { scale: 0.75, bridgeHeight: 4 },
+    { scale: 1, bridgeHeight: 4 },
+    { scale: 1.5, bridgeHeight: 4 },
+    { scale: 0.75, bridgeHeight: 18 },
+    { scale: 1, bridgeHeight: 18 },
+    { scale: 1.5, bridgeHeight: 18 },
+  ])("separates a $bridgeHeight-pixel contact without filling pips at scale $scale", ({ scale, bridgeHeight }) => {
+    const mask = touchingFaces(scale, bridgeHeight);
     const labels = new cv.Mat();
     try {
       separateDice(cv, mask);
@@ -61,7 +68,7 @@ describe("separateDice", () => {
   });
 
   it("leaves a broad connection unchanged when no clear split exists", () => {
-    const mask = touchingFaces(1, 18);
+    const mask = touchingFaces(1, 32);
     try {
       const before = new Uint8Array(mask.data);
       separateDice(cv, mask);

@@ -94,9 +94,10 @@ pips on multi-pip faces.
 Before selecting faces, the detector checks indented outlines for narrow
 connections between nearby dice. It opens a filled copy of the outline (shrinks
 then expands it) and applies the cut only if multiple substantial pieces remain
-and at least 85% of the silhouette is preserved. Pip holes retain their original
-pixels. This handles narrow contacts; broad overlaps can still require moving
-the dice apart.
+and at least 85% of the silhouette is preserved. If a gentle opening leaves the
+faces joined, it retries with a larger opening, retaining the same area and
+minimum piece-size checks. Pip holes retain their original pixels. This handles
+contacts with a distinct neck; broad overlaps can still require moving dice apart.
 
 Face selection happens before pip counting. With an upright camera, an isolated
 square top projects no taller than its width; a whole cube has additional vertical

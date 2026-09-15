@@ -22,7 +22,8 @@ export function separateDice(cv: typeof OpenCv, binary: OpenCv.Mat): void {
         if (area < 450 || area > binary.rows * binary.cols * 0.3) continue;
         const hull = own(new cv.Mat());
         cv.convexHull(contour, hull);
-        if (area / cv.contourArea(hull) > 0.9) continue;
+        // Leave room for raster rounding on wider contacts at different scales.
+        if (area / cv.contourArea(hull) > 0.92) continue;
 
         const bounds = cv.boundingRect(contour);
         const { x, y, width, height } = bounds;
@@ -30,28 +31,33 @@ export function separateDice(cv: typeof OpenCv, binary: OpenCv.Mat): void {
         cv.drawContours(silhouette, contours, i, new cv.Scalar(255), cv.FILLED,
           cv.LINE_8, hierarchy, 0, new cv.Point(-x, -y));
         const originalPixels = cv.countNonZero(silhouette);
-        const removed = own(new cv.Mat());
-        silhouette.copyTo(removed);
-        // Scale the opening to the candidate, rather than the camera resolution.
-        const size = Math.max(3, 2 * Math.floor(Math.min(width, height) / 8) + 1);
-        const kernel = own(cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(size, size)));
-        cv.morphologyEx(silhouette, silhouette, cv.MORPH_OPEN, kernel,
-          new cv.Point(-1, -1), 1, cv.BORDER_CONSTANT, new cv.Scalar(0));
-        if (cv.countNonZero(silhouette) < originalPixels * 0.85) continue;
-
+        const opened = own(new cv.Mat());
         const pieces = own(new cv.MatVector());
         const pieceHierarchy = own(new cv.Mat());
-        cv.findContours(silhouette, pieces, pieceHierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
-        if (pieces.size() < 2) continue;
-        let substantialPieces = true;
-        for (let j = 0; j < pieces.size(); j++) {
-          const piece = own(pieces.get(j));
-          if (cv.contourArea(piece) < 225) substantialPieces = false;
+        // Try a gentle opening first, then a larger one for wider contacts.
+        // Always start from the original silhouette, and keep the same minimum
+        // retained area and piece size at both strengths.
+        for (const divisor of [8, 4]) {
+          const size = Math.max(3, 2 * Math.floor(Math.min(width, height) / divisor) + 1);
+          const kernel = own(cv.getStructuringElement(cv.MORPH_ELLIPSE, new cv.Size(size, size)));
+          cv.morphologyEx(silhouette, opened, cv.MORPH_OPEN, kernel,
+            new cv.Point(-1, -1), 1, cv.BORDER_CONSTANT, new cv.Scalar(0));
+          if (cv.countNonZero(opened) < originalPixels * 0.85) break;
+
+          cv.findContours(opened, pieces, pieceHierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+          if (pieces.size() < 2) continue;
+          let substantialPieces = true;
+          for (let j = 0; j < pieces.size(); j++) {
+            const piece = own(pieces.get(j));
+            if (cv.contourArea(piece) < 225) substantialPieces = false;
+          }
+          if (!substantialPieces) continue;
+          const removed = own(new cv.Mat());
+          cv.subtract(silhouette, opened, removed);
+          const region = own(binary.roi(bounds));
+          region.setTo(new cv.Scalar(0), removed);
+          break;
         }
-        if (!substantialPieces) continue;
-        cv.subtract(removed, silhouette, removed);
-        const region = own(binary.roi(bounds));
-        region.setTo(new cv.Scalar(0), removed);
       } finally {
         for (const object of owned.reverse()) object.delete();
       }
