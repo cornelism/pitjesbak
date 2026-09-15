@@ -61,7 +61,7 @@ The camera uses **OpenCV.js**, loaded locally when recognition starts. It finds
 whole dice and their enclosed dark pips, estimates the top-face region from the
 camera angle, and checks the top pip pattern. Side-face pips are excluded before
 logging. The captured real-camera fixtures read **3, 5, 3**, **6, 1, 5**, and
-**2, 4, 1** at 45°, plus **1, 6, 2** at 50°.
+**2, 4, 1** at 45°, plus **1, 6, 2** and **4, 6, 1** at 50°.
 
 - Use light dice with dark pips on a darker, plain surface and keep dice apart.
 - Keep the camera upright (the visible sides should extend toward the bottom of
@@ -91,11 +91,17 @@ recognition only; the live preview and saved frames retain the original pixels.
 A single centered pip can occupy a larger fraction of the face than individual
 pips on multi-pip faces.
 
-If dark sides disappear from the mask, a fallback checks whether all enclosed
-pips form a complete four-, five-, or six-pip pattern. It normalizes the pattern's
-scale and shear rather than relying on sharp corners in the rounded die outline.
-The cluster must be centered and fill the face; missing or extra pips are not
-inferred or discarded to force a match.
+Face selection happens before pip counting. With an upright camera, an isolated
+square top projects no taller than its width; a whole cube has additional vertical
+side depth. The detector preserves the entire mask for a complete face and applies
+the angle-based side mask only to taller cube contours. It counts the selected
+pips, then validates their arrangement. Complete faces never retry a smaller subset
+to force a match: this prevents cutting a six down to a four.
+
+For a complete four-, five-, or six-pip face, pattern validation normalizes scale
+and shear rather than relying on sharp corners in the rounded die outline. The
+cluster must be centered and fill the face. Face selection remains a geometric
+heuristic for upright cameras and separated, roughly cubic dice.
 
 When a reading fails, use **Save camera frame** to download `dice-camera-frame.png`.
 It captures the current video at the detector's input resolution without green

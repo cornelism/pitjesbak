@@ -7,8 +7,8 @@ const CONTRAST_CURVE = Uint8Array.from({ length: 256 }, (_, value) =>
   Math.round(255 * (value / 255) ** 1.5),
 );
 
-/** OpenCV finds whole cubes and enclosed pips. An upright camera's viewing angle
- * determines which part of each cube is its top face, before pattern validation.
+/** OpenCV locates bright dice, isolates their top faces, and counts enclosed pips.
+ * Pattern validation checks that count after the face has been selected.
  * cameraTilt is degrees away from overhead; zero preserves the entire face.
  */
 export function detectDiceOpenCv(
@@ -61,10 +61,15 @@ export function detectDiceOpenCv(
         const silhouette = cv.Mat.zeros(height, width, cv.CV_8UC1);
         try {
           cv.drawContours(silhouette, contours, i, new cv.Scalar(255), cv.FILLED);
+          // A projected square top is no taller than it is wide for an upright
+          // camera. A full cube in our 0–60° range has additional vertical sides.
+          // If thresholding already removed those sides, keep the complete face
+          // instead of cutting another strip off its bottom (six would become four).
+          const completeFace = tilt === 0 || h <= w;
           // A square rotated on the table has equal X/Y extents. Its projected
           // top depth is width*cos(tilt); the remaining height is the side face.
           // Subtract that vertical extrusion from EACH column's lower boundary.
-          const sideHeight = tilt === 0 ? 0 : Math.max(0, h - w * Math.cos(tilt));
+          const sideHeight = completeFace ? 0 : Math.max(0, h - w * Math.cos(tilt));
           const top = new Uint32Array(w * h);
           let left = w;
           let right = 0;
@@ -89,7 +94,7 @@ export function detectDiceOpenCv(
             ? ([px, py]: Point): Point => [px / (w - 1), py / ((w - 1) * Math.cos(tilt))]
             : faceRectifier(top, w, { id: 1, x: left, y: firstY, right, bottom });
           if (!rectify) continue;
-          const pips: Pip[] = [];
+          const facePips: Pip[] = [];
           const allPips: Pip[] = [];
           for (let child = hierarchy.data32S[i * 4 + 2]; child !== -1; child = hierarchy.data32S[child * 4]) {
             const pip = contours.get(child);
@@ -104,20 +109,26 @@ export function detectDiceOpenCv(
               const py = m.m01 / m.m00 - y;
               allPips.push({ point: [px, py], area: pipArea });
               if (!top[Math.round(py) * w + Math.round(px)]) continue;
-              pips.push({ point: rectify([px, py]), area: pipArea });
+              facePips.push({ point: [px, py], area: pipArea });
             } finally {
               pip.delete();
             }
           }
           // Some dice use a larger central dot for one. Other faces still use
           // the stricter area limit, and every reading must match its layout.
-          const maxPipRatio = pips.length === 1 ? 0.16 : 0.085;
-          const consistentPips = hasConsistentPipSizes(pips)
-            && pips.every((pip) => pip.area / area <= maxPipRatio);
-          const value = (consistentPips ? readPipPattern(pips.map((pip) => pip.point)) : null)
-            ?? (tilt > 0 ? readSeparatedTop(allPips.filter((pip) => pip.area / area <= 0.085), w, h) : null)
-            ?? (tilt > 0 && allPips.every((pip) => pip.area / area <= 0.085)
-              ? readWholeFacePattern(allPips, w, h) : null);
+          const count = facePips.length;
+          const maxPipRatio = count === 1 ? 0.16 : 0.085;
+          const consistentPips = hasConsistentPipSizes(facePips)
+            && facePips.every((pip) => pip.area / area <= maxPipRatio);
+          const validatedCount = consistentPips
+            ? readPipPattern(facePips.map((pip) => rectify(pip.point)))
+              ?? (tilt > 0 && completeFace ? readWholeFacePattern(facePips, w, h) : null)
+            : null;
+          // A complete face is indivisible: never retry with a convenient subset.
+          // For cubes, a separated upper cluster can refine the estimated mask.
+          const value = validatedCount
+            ?? (tilt > 0 && !completeFace
+              ? readSeparatedTop(allPips.filter((pip) => pip.area / area <= 0.085), w, h) : null);
           if (value) detected.push({ value, x, y, width: w, height: h });
         } finally {
           silhouette.delete();

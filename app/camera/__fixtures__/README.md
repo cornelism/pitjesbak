@@ -1,5 +1,15 @@
 # Real camera fixtures
 
+## angled-dice-4-6-1.png
+
+- Captured on 2026-09-15 directly from the browser video with **Save camera frame**.
+- Original unannotated 640 × 480 camera pixels; no screen capture or preprocessing.
+- Camera angle control: **50° away from overhead**.
+- Manually read top faces, ordered left to right: **4, 6, 1** (total **11**).
+- Reproduces a false reading of **4, 4, 1**: the estimated top-face mask excludes
+  the bottom two pips of the six, and the remaining four are accepted before
+  the complete-face pattern matcher is evaluated.
+
 ## angled-dice-1-6-2.png
 
 - Captured on 2026-09-15 directly from the browser video with **Save camera frame**.

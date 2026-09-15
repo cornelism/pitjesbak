@@ -23,6 +23,8 @@ const shadedRollPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/angled-
 const shadedRollFrame = { width: shadedRollPng.width, height: shadedRollPng.height, data: new Uint8ClampedArray(shadedRollPng.data) };
 const clusteredRollPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/angled-dice-1-6-2.png", import.meta.url)));
 const clusteredRollFrame = { width: clusteredRollPng.width, height: clusteredRollPng.height, data: new Uint8ClampedArray(clusteredRollPng.data) };
+const misreadSixPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/angled-dice-4-6-1.png", import.meta.url)));
+const misreadSixFrame = { width: misreadSixPng.width, height: misreadSixPng.height, data: new Uint8ClampedArray(misreadSixPng.data) };
 
 function cropNewRoll(x: number, y: number, width: number, height: number) {
   const data = new Uint8ClampedArray(width * height * 4);
@@ -35,7 +37,7 @@ function cropNewRoll(x: number, y: number, width: number, height: number) {
 
 // Ray-cast an actual cube, including pips on two visible side faces. This fixture
 // is independent of the detector's silhouette-based top-face calculation.
-function renderCube(value: DieValue, yaw: number) {
+function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue, DieValue] = [1, 5]) {
   const width = 240, height = 200, half = 30;
   const data = new Uint8ClampedArray(width * height * 4);
   const layouts = [
@@ -67,7 +69,7 @@ function renderCube(value: DieValue, yaw: number) {
         const point = origin.map((o, axis) => o + near * direction[axis]);
         const [u, v] = face === 2 ? [point[0], point[1]] : face === 1 ? [point[0], point[2]] : [point[1], point[2]];
         color = face === 2 ? 235 : face === 1 ? 170 : 150;
-        const pips = layouts[face === 2 ? value - 1 : face === 1 ? 0 : 4];
+        const pips = layouts[face === 2 ? value - 1 : sideValues[face === 1 ? 0 : 1] - 1];
         if (pips.some(([px, py]) => Math.hypot(u - px * 13.8, v - py * 13.8) < 4.5)) color = 20;
       }
       const i = (y * width + x) * 4;
@@ -79,6 +81,21 @@ function renderCube(value: DieValue, yaw: number) {
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it("does not mistake the six for four in the captured 4, 6, 1 roll at 50 degrees", () => {
+    expect(detectDiceOpenCv(cv, misreadSixFrame, 50).map((die) => die.value)).toEqual([4, 6, 1]);
+  });
+
+  it.each([0.8, 1.15])("counts all six top pips in the 4, 6, 1 roll at exposure multiplier %s", (exposure) => {
+    const data = misreadSixFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...misreadSixFrame, data }, 50).map((die) => die.value)).toEqual([4, 6, 1]);
+  });
+
+  it.each<DieValue>([1, 2, 3, 4, 5, 6])("counts only top face %i when both visible sides have six pips", (value) => {
+    for (const yaw of [0, 0.4, 0.8, 1.2]) {
+      expect(detectDiceOpenCv(cv, renderCube(value, yaw, [6, 6]), 45).map((die) => die.value), `yaw ${yaw}`).toEqual([value]);
+    }
+  });
+
   it("reads the captured 1, 6, 2 roll at its 50-degree camera setting", () => {
     expect(detectDiceOpenCv(cv, clusteredRollFrame, 50).map((die) => die.value)).toEqual([1, 6, 2]);
   });
