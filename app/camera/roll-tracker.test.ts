@@ -38,12 +38,70 @@ describe("roll tracker", () => {
     expect(track(roll(), 10000).roll).toEqual([2, 4, 6]);
   });
 
-  it.each(([[], [2, 4], [2, 4, 6, 1]] satisfies DieValue[][]).map((values) => ({ values })))("restarts recovery after a wrong dice count $values", ({ values }) => {
+  it.each(([[], [2, 4], [2, 4, 6, 1]] satisfies DieValue[][]).map((values) => ({ values })))("tolerates one wrong dice count $values in the recovery window", ({ values }) => {
     const track = createRollTracker(3);
     track(roll([2, 4, 4]), 0);
     for (let i = 1; i <= 9; i++) track(roll(), i * 160);
-    expect(track(roll(values), 1600).matchingAttempts).toBe(0);
-    expect(recover(track, roll(), 1760).roll).toEqual([2, 4, 6]);
+    expect(track(roll(values), 1600).roll).toBeNull();
+    expect(track(roll(), 1760).roll).toEqual([2, 4, 6]);
+  });
+
+  it("confirms an eight-of-ten majority despite two isolated misreads", () => {
+    const track = createRollTracker(3);
+    track(roll([2, 4, 4]), 0);
+    for (let i = 1; i <= 10; i++) {
+      const state = track(roll(i === 4 || i === 8 ? [2, 4, 4] : [2, 4, 6]), i * 160);
+      expect(state.roll).toEqual(i === 10 ? [2, 4, 6] : null);
+    }
+  });
+
+  it("does not confirm when more than two of ten readings disagree", () => {
+    const track = createRollTracker(3);
+    track(roll([2, 4, 4]), 0);
+    for (let i = 1; i <= 30; i++) {
+      expect(track(roll(i % 10 < 3 ? [2, 4, 4] : [2, 4, 6]), i * 160).roll).toBeNull();
+    }
+  });
+
+  it("expires old votes instead of accumulating agreement across attempts", () => {
+    const track = createRollTracker(3);
+    track(roll([2, 4, 4]), 0);
+    for (let i = 1; i <= 8; i++) track(roll(), i * 160);
+    for (let i = 9; i <= 13; i++) expect(track([], i * 160).roll).toBeNull();
+    expect(track(roll(), 2240).roll).toBeNull();
+  });
+
+  it("waits for the current reading to agree with the majority", () => {
+    const track = createRollTracker(3);
+    track(roll([2, 4, 4]), 0);
+    for (let i = 1; i <= 9; i++) track(roll(), i * 160);
+    expect(track(roll([2, 4, 4]), 1600).roll).toBeNull();
+    expect(track(roll(), 1760).roll).toEqual([2, 4, 6]);
+  });
+
+  it("does not mistake accumulating small movements for stationary jitter", () => {
+    const track = createRollTracker(3);
+    for (let i = 0; i < 40; i++) {
+      expect(track(roll([2, 4, 6], i * 2), i * 160).roll).toBeNull();
+    }
+  });
+
+  it("tolerates minor box shifts and size changes while settling and after confirmation", () => {
+    const track = createRollTracker(3);
+    track(roll(), 0);
+    const jitter = roll([2, 4, 6], 5).map((die) => ({ ...die, width: 54, height: 46 }));
+    expect(track(jitter, 900).roll).toEqual([2, 4, 6]);
+    const confirmed = track(jitter, 1000).confirmedDice;
+    expect(track(roll(), 1600).confirmedDice).toBe(confirmed);
+    expect(track(roll(), 2200).confirmedDice).toBe(confirmed);
+  });
+
+  it("discards recovery votes when dice move to a new position", () => {
+    const track = createRollTracker(3);
+    track(roll([2, 4, 4]), 0);
+    for (let i = 1; i <= 9; i++) track(roll(), i * 160);
+    expect(track(roll([2, 4, 6], 80), 1600).roll).toBeNull();
+    expect(track(roll([2, 4, 6], 80), 2500).roll).toEqual([2, 4, 6]);
   });
 
   it("compares individual values, not just the total", () => {

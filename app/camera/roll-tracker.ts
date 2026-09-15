@@ -3,6 +3,7 @@ import type { DetectedDie, DieValue } from "./dice-types";
 const SETTLE_MS = 900;
 const REARM_MS = 400;
 export const RECOVERY_ATTEMPTS = 10;
+export const RECOVERY_MATCHES = 8;
 
 export interface RollTrackingState {
   roll: DieValue[] | null;
@@ -17,9 +18,10 @@ function sameDice(a: readonly DetectedDie[], b: readonly DetectedDie[], compareV
   return a.every((die) => {
     const match = remaining.findIndex((other) =>
       (!compareValues || die.value === other.value) &&
-      Math.hypot(die.x - other.x, die.y - other.y) <= Math.max(3, die.width * 0.08) &&
-      Math.abs(die.width - other.width) <= Math.max(3, die.width * 0.1) &&
-      Math.abs(die.height - other.height) <= Math.max(3, die.height * 0.1),
+      Math.hypot(die.x + die.width / 2 - other.x - other.width / 2,
+        die.y + die.height / 2 - other.y - other.height / 2) <= Math.max(4, die.width * 0.15) &&
+      Math.abs(die.width - other.width) <= Math.max(4, die.width * 0.2) &&
+      Math.abs(die.height - other.height) <= Math.max(4, die.height * 0.2),
     );
     if (match === -1) return false;
     remaining.splice(match, 1);
@@ -27,11 +29,13 @@ function sameDice(a: readonly DetectedDie[], b: readonly DetectedDie[], compareV
   });
 }
 
-/** Confirm steady rolls normally; require ten consecutive matches after flicker.
+/** Confirm steady rolls normally; use eight-of-ten agreement after flicker.
  * Confirmed rolls stay frozen until sustained motion/removal rearms detection.
  */
 export function createRollTracker(expectedCount: number) {
   let candidate: readonly DetectedDie[] = [];
+  let positionAnchor: readonly DetectedDie[] = [];
+  let attempts: (readonly DetectedDie[])[] = [];
   let candidateSince = 0;
   let matchingAttempts = 0;
   let recovering = false;
@@ -49,6 +53,8 @@ export function createRollTracker(expectedCount: number) {
           recovering = false;
           logged = null;
           candidate = [];
+          positionAnchor = [];
+          attempts = [];
           matchingAttempts = 0;
           changedSince = null;
         }
@@ -56,6 +62,15 @@ export function createRollTracker(expectedCount: number) {
       // Ignore value changes and small jitter after confirmation. Only a new
       // throw can unlock the roll, even if a stationary misread persists.
       if (logged) return { roll: null, confirmedDice: logged, matchingAttempts, recovering: false };
+    }
+
+    if (dice.length === expectedCount && !sameDice(positionAnchor, dice, false)) {
+      // Compare against a fixed position, so small steps cannot accumulate into
+      // an apparently stationary roll. Never carry votes into a new location.
+      positionAnchor = dice.map((die) => ({ ...die }));
+      candidate = [];
+      attempts = [];
+      recovering = false;
     }
 
     if (candidate.length && !sameDice(candidate, dice)
@@ -74,13 +89,31 @@ export function createRollTracker(expectedCount: number) {
       } else {
         matchingAttempts = Math.min(RECOVERY_ATTEMPTS, matchingAttempts + 1);
       }
-      const ready = recovering ? matchingAttempts >= RECOVERY_ATTEMPTS : now - candidateSince >= SETTLE_MS;
-      if (ready) {
-        logged = dice.map((die) => ({ ...die })).sort((a, b) => a.x - b.x || a.y - b.y);
-        roll = logged.map((die) => die.value);
-        changedSince = null;
-        recovering = false;
+    }
+    let confirmed = dice;
+    let ready = dice.length === expectedCount && now - candidateSince >= SETTLE_MS;
+    if (recovering) {
+      attempts.push(dice.map((die) => ({ ...die })));
+      if (attempts.length > RECOVERY_ATTEMPTS) attempts.shift();
+      matchingAttempts = 0;
+      for (const attempt of attempts) {
+        if (attempt.length !== expectedCount) continue;
+        const matches = attempts.filter((other) => sameDice(attempt, other)).length;
+        if (matches > matchingAttempts) {
+          matchingAttempts = matches;
+          confirmed = attempt;
+        }
       }
+      // Missing/minority readings count against agreement and cannot trigger
+      // confirmation themselves, even when earlier readings have a majority.
+      ready = attempts.length === RECOVERY_ATTEMPTS && matchingAttempts >= RECOVERY_MATCHES
+        && sameDice(confirmed, dice);
+    }
+    if (ready) {
+      logged = confirmed.map((die) => ({ ...die })).sort((a, b) => a.x - b.x || a.y - b.y);
+      roll = logged.map((die) => die.value);
+      changedSince = null;
+      recovering = false;
     }
     return { roll, confirmedDice: logged ?? [], matchingAttempts, recovering };
   };

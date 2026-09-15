@@ -72,9 +72,12 @@ logging. The captured real-camera fixtures read **3, 5, 3**, **6, 1, 5**, and
 - Green boxes label recognized dice; **Last roll** shows the last settled reading.
 
 Steady readings settle after 900 ms. If stationary values change or detections
-drop out, confirmation requires ten consecutive matching readings (about 1.5
-seconds at the current sampling rate). A different value or wrong dice count
-restarts that streak. Once confirmed, the values, marker positions and confirmation
+drop out, confirmation uses the last ten attempts (about 1.5 seconds at the current
+sampling rate). Eight must agree on every die, and the current reading must match
+that majority. Up to two misreads or incomplete detections are tolerated; an even
+split remains uncertain. Small box shifts and size changes are tolerated, while
+movement to a new position discards old votes. Once confirmed, the values, marker
+positions and confirmation
 status stay frozen despite subsequent misreads. Removal or clear movement lasting
 at least 400 ms unlocks detection for a new throw with normal settling again.
 

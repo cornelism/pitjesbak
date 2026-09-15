@@ -9,7 +9,7 @@ vi.mock("./opencv-runtime", () => ({ loadOpenCv: () => Promise.resolve({ cv: {} 
 
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
-it("freezes confirmed values, marker positions and status until a new throw", async () => {
+it.each(["steady", "flickering"])("confirms %s readings, then freezes indicators until a new throw", async (mode) => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
   const video = document.createElement("video");
   Object.defineProperties(video, { readyState: { value: 2 }, videoWidth: { value: 640 }, videoHeight: { value: 480 } });
@@ -29,7 +29,14 @@ it("freezes confirmed values, marker positions and status until a new throw", as
 
   await attempt();
   expect(fillText.mock.calls.slice(-3).map(([value]) => value)).toEqual(["1", "4", "2"]);
-  for (let i = 1; i < 7; i++) await attempt();
+  for (let i = 1; i < (mode === "steady" ? 7 : 11); i++) {
+    values = mode === "flickering" && (i === 1 || i === 5) ? [1, 4, 6] : [1, 4, 2];
+    await attempt();
+    if (mode === "flickering" && i < 10) {
+      expect(log).not.toHaveBeenCalled();
+      expect(screen.getByText(/agreeing readings · need 8/)).toBeTruthy();
+    }
+  }
   expect(log).toHaveBeenCalledTimes(1);
   expect(screen.getByRole("status").textContent).toBe("Last roll: 1 · 4 · 2");
 
