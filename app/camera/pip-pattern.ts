@@ -26,7 +26,11 @@ export function readPipPattern(points: readonly Point[]): DieValue | null {
   if (count > 1) {
     const actual = signature(points);
     const expected = patternSignatures[count - 1];
-    if (actual.span < 0.4 || actual.span > 1.1) return null;
+    // Two-pip faces can have more inset dots: the captured 1–2–4 roll has
+    // a normalized separation of 0.37. Keep a lower bound to reject tiny pairs,
+    // without relaxing the required spread of faces with three or more pips.
+    const minimumSpan = count === 2 ? 0.35 : 0.4;
+    if (actual.span < minimumSpan || actual.span > 1.1) return null;
     if (actual.distances.some((distance, i) => Math.abs(distance - expected.distances[i]) > 0.12)) return null;
   }
   return count;

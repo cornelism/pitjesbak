@@ -1,5 +1,16 @@
 # Real camera fixtures
 
+## angled-dice-1-2-4.png
+
+- Captured on 2026-09-16 directly from the browser video with **Save camera frame**.
+- Original unannotated 640 × 480 camera pixels; no screen capture or preprocessing.
+- Camera angle control: **45° away from overhead**, not a physical measurement.
+- Manually read top faces, ordered left to right: **1, 2, 4** (total **7**).
+- Reproduces a missing middle die: both top pips are found, but their normalized
+  separation (about 0.37) falls below the old shared minimum of 0.4.
+- Tests replay the original frame, moderate exposure changes, and nearby angle
+  settings. Pattern tests retain rejection of tiny pairs and off-center marks.
+
 ## angled-dice-4-6-1.png
 
 - Captured on 2026-09-15 directly from the browser video with **Save camera frame**.

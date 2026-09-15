@@ -28,6 +28,15 @@ function projectedFace(value: DieValue): Pip[] {
 }
 
 describe("readPipPattern", () => {
+  it("reads a compact two-pip face regardless of rotation", () => {
+    for (const angle of [0, 0.4, Math.PI / 4, 1.2]) {
+      const points = normalizedFace(2, angle).map(([x, y]): Point => [
+        0.5 + (x - 0.5) * 0.55, 0.5 + (y - 0.5) * 0.55,
+      ]);
+      expect(readPipPattern(points), `angle ${angle}`).toBe(2);
+    }
+  });
+
   it.each<DieValue>([1, 2, 3, 4, 5, 6])("reads face %i regardless of rotation and contour order", (value) => {
     for (const angle of [0, 0.4, Math.PI / 4, 1.2]) {
       expect(readPipPattern(normalizedFace(value, angle).reverse()), `angle ${angle}`).toBe(value);
@@ -40,6 +49,8 @@ describe("readPipPattern", () => {
     { name: "off-center pip", points: [[0.8, 0.8]] },
     { name: "triangle instead of three in a line", points: [[0.2, 0.3], [0.8, 0.3], [0.5, 0.8]] },
     { name: "coincident pips", points: [[0.5, 0.5], [0.5, 0.5]] },
+    { name: "off-center pair", points: [[0.15, 0.15], [0.42, 0.42]] },
+    { name: "compact three-pip cluster", points: [[0.37, 0.37], [0.5, 0.5], [0.63, 0.63]] },
     { name: "pips too close together", points: [[0.4, 0.4], [0.6, 0.6]] },
     { name: "pips spread beyond a face", points: [[0.05, 0.05], [0.95, 0.95]] },
     { name: "pip on the boundary", points: [[0, 0.5], [1, 0.5]] },

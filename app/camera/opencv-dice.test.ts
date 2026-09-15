@@ -26,6 +26,9 @@ const clusteredRollFrame = { width: clusteredRollPng.width, height: clusteredRol
 const misreadSixPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/angled-dice-4-6-1.png", import.meta.url)));
 const misreadSixFrame = { width: misreadSixPng.width, height: misreadSixPng.height, data: new Uint8ClampedArray(misreadSixPng.data) };
 
+const sidePipsPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/angled-dice-1-2-4.png", import.meta.url)));
+const sidePipsFrame = { width: sidePipsPng.width, height: sidePipsPng.height, data: new Uint8ClampedArray(sidePipsPng.data) };
+
 function cropNewRoll(x: number, y: number, width: number, height: number) {
   const data = new Uint8ClampedArray(width * height * 4);
   for (let row = 0; row < height; row++) {
@@ -81,6 +84,19 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it("reads the captured 1, 2, 4 roll with visible side pips at 45 degrees", () => {
+    expect(detectDiceOpenCv(cv, sidePipsFrame, 45).map((die) => die.value)).toEqual([1, 2, 4]);
+  });
+
+  it.each([0.8, 1.15])("reads the 1, 2, 4 roll at exposure multiplier %s", (exposure) => {
+    const data = sidePipsFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...sidePipsFrame, data }, 45).map((die) => die.value)).toEqual([1, 2, 4]);
+  });
+
+  it.each([40, 50])("reads the 1, 2, 4 roll at nearby angle %i", (angle) => {
+    expect(detectDiceOpenCv(cv, sidePipsFrame, angle).map((die) => die.value)).toEqual([1, 2, 4]);
+  });
+
   it("does not mistake the six for four in the captured 4, 6, 1 roll at 50 degrees", () => {
     expect(detectDiceOpenCv(cv, misreadSixFrame, 50).map((die) => die.value)).toEqual([4, 6, 1]);
   });
