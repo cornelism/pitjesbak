@@ -9,18 +9,20 @@ vi.mock("./opencv-runtime", () => ({ loadOpenCv: () => Promise.resolve({ cv: {} 
 
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
-it("keeps live markers normally, but holds confirmed markers and waits for ten matches after flicker", async () => {
+it("freezes confirmed values, marker positions and status until a new throw", async () => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
   const video = document.createElement("video");
   Object.defineProperties(video, { readyState: { value: 2 }, videoWidth: { value: 640 }, videoHeight: { value: 480 } });
   const fillText = vi.fn();
+  const strokeRect = vi.fn();
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
     drawImage: vi.fn(), getImageData: vi.fn().mockReturnValue({}), clearRect: vi.fn(),
-    strokeRect: vi.fn(), fillRect: vi.fn(), fillText,
+    strokeRect, fillRect: vi.fn(), fillText,
   } as unknown as CanvasRenderingContext2D);
   const log = vi.spyOn(console, "log").mockImplementation(() => {});
   let values: DieValue[] = [1, 4, 2];
-  vi.mocked(detectDiceOpenCv).mockImplementation(() => values.map((value, i) => ({ value, x: i * 80, y: 40, width: 50, height: 50 })));
+  let offset = 0;
+  vi.mocked(detectDiceOpenCv).mockImplementation(() => values.map((value, i) => ({ value, x: i * 80 + offset, y: 40, width: 50, height: 50 })));
   const { unmount } = render(<DiceReader videoRef={{ current: video }} />);
   const attempt = async () => { await act(async () => { await vi.advanceTimersByTimeAsync(160); }); };
   await act(async () => {});
@@ -32,19 +34,19 @@ it("keeps live markers normally, but holds confirmed markers and waits for ten m
   expect(screen.getByRole("status").textContent).toBe("Last roll: 1 · 4 · 2");
 
   values = [1, 4, 6];
-  await attempt();
-  expect(screen.getByText(/Stabilizing dice/).textContent).toContain("1/10");
-  expect(fillText.mock.calls.slice(-3).map(([value]) => value)).toEqual(["1", "4", "2"]);
+  offset = 2;
+  for (let i = 0; i < 15; i++) {
+    await attempt();
+    expect(screen.getByText("Roll confirmed")).toBeTruthy();
+    expect(fillText.mock.calls.slice(-3).map(([value]) => value)).toEqual(["1", "4", "2"]);
+    expect(strokeRect.mock.calls.slice(-3).map(([x]) => x)).toEqual([0, 80, 160]);
+  }
   expect(log).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole("status").textContent).toBe("Last roll: 1 · 4 · 2");
 
-  // Stationary disagreement keeps the previous markers until ten matching
-  // attempts confirm the replacement; elapsed time alone cannot replace it.
-  for (let i = 0; i < 3; i++) await attempt();
-  expect(screen.getByText(/Stabilizing dice/).textContent).toContain("4/10");
-  expect(fillText.mock.calls.slice(-3).map(([value]) => value)).toEqual(["1", "4", "2"]);
-  for (let i = 0; i < 5; i++) await attempt();
-  expect(log).toHaveBeenCalledTimes(1);
-  await attempt();
+  // A new throw moves the dice, unlocking the previous confirmation.
+  offset = 80;
+  for (let i = 0; i < 10; i++) await attempt();
   expect(log).toHaveBeenCalledTimes(2);
   expect(screen.getByRole("status").textContent).toBe("Last roll: 1 · 4 · 6");
   expect(fillText.mock.calls.slice(-3).map(([value]) => value)).toEqual(["1", "4", "6"]);

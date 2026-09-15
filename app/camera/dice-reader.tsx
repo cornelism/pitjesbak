@@ -55,7 +55,8 @@ export default function DiceReader({ videoRef }: DiceReaderProps) {
         drawing.clearRect(0, 0, width, height);
         drawing.lineWidth = 2;
         drawing.font = "bold 16px sans-serif";
-        for (const die of tracked.recovering ? tracked.confirmedDice : dice) {
+        const markers = tracked.confirmedDice.length || tracked.recovering ? tracked.confirmedDice : dice;
+        for (const die of markers) {
           drawing.strokeStyle = "#34d399";
           drawing.strokeRect(die.x, die.y, die.width, die.height);
           drawing.fillStyle = "#34d399";

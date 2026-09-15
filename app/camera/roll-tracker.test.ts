@@ -79,6 +79,30 @@ describe("roll tracker", () => {
     expect(track(roll(), 3000).roll).toBeNull();
   });
 
+  it("freezes confirmed values and geometry despite stationary misreads and jitter", () => {
+    const track = createRollTracker(3);
+    track(roll(), 0);
+    const confirmed = track(roll(), 900).confirmedDice;
+    for (let i = 0; i < 30; i++) {
+      const state = track(roll([2, 4, 4], i % 2 ? 2 : 0), 1000 + i * 160);
+      expect(state.confirmedDice).toBe(confirmed);
+      expect(state.roll).toBeNull();
+      expect(state.recovering).toBe(false);
+    }
+  });
+
+  it("requires sustained movement independently of stationary misreads", () => {
+    const track = createRollTracker(3);
+    track(roll(), 0);
+    const confirmed = track(roll(), 900).confirmedDice;
+    track(roll([2, 4, 4]), 1000);
+    expect(track(roll([2, 4, 4], 80), 2000).confirmedDice).toBe(confirmed);
+    track(roll([2, 4, 4]), 2200);
+    expect(track(roll([2, 4, 4], 80), 2400).confirmedDice).toBe(confirmed);
+    expect(track(roll([2, 4, 4], 80), 2800).confirmedDice).toEqual([]);
+    expect(track(roll([2, 4, 4], 80), 3700).roll).toEqual([2, 4, 4]);
+  });
+
   it("clears markers after sustained removal and uses normal speed on the next steady roll", () => {
     const track = createRollTracker(3);
     track(roll(), 0);

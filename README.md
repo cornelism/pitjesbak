@@ -74,8 +74,9 @@ logging. The captured real-camera fixtures read **3, 5, 3**, **6, 1, 5**, and
 Steady readings settle after 900 ms. If stationary values change or detections
 drop out, confirmation requires ten consecutive matching readings (about 1.5
 seconds at the current sampling rate). A different value or wrong dice count
-restarts that streak. During recovery, the markers keep the last confirmed roll.
-Sustained removal or movement starts a new throw with normal settling again.
+restarts that streak. Once confirmed, the values, marker positions and confirmation
+status stay frozen despite subsequent misreads. Removal or clear movement lasting
+at least 400 ms unlocks detection for a new throw with normal settling again.
 
 The angle calculation estimates the projected top depth as `width × cos(angle)`.
 The remaining vertical extent is the visible side of the cube. The detector removes

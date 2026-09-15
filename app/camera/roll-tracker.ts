@@ -28,7 +28,7 @@ function sameDice(a: readonly DetectedDie[], b: readonly DetectedDie[], compareV
 }
 
 /** Confirm steady rolls normally; require ten consecutive matches after flicker.
- * Brief dropouts retain the confirmed markers. Sustained motion/removal rearms.
+ * Confirmed rolls stay frozen until sustained motion/removal rearms detection.
  */
 export function createRollTracker(expectedCount: number) {
   let candidate: readonly DetectedDie[] = [];
@@ -39,25 +39,27 @@ export function createRollTracker(expectedCount: number) {
   let changedSince: number | null = null;
 
   return (dice: readonly DetectedDie[], now: number): RollTrackingState => {
-    if (candidate.length && !sameDice(candidate, dice)
-      && (dice.length !== expectedCount || sameDice(candidate, dice, false))) recovering = true;
-
     if (logged) {
-      if (sameDice(logged, dice)) {
+      const newThrow = !dice.length || (dice.length === expectedCount && !sameDice(logged, dice, false));
+      if (!newThrow) {
         changedSince = null;
       } else {
         changedSince ??= now;
-        const newThrow = !dice.length || (dice.length === expectedCount && !sameDice(logged, dice, false));
-        if (newThrow && now - changedSince >= REARM_MS) {
-          // Removal or clear movement starts a new throw. Stationary value
-          // changes retain the old confirmation until ten attempts agree.
+        if (now - changedSince >= REARM_MS) {
           recovering = false;
           logged = null;
           candidate = [];
           matchingAttempts = 0;
+          changedSince = null;
         }
       }
+      // Ignore value changes and small jitter after confirmation. Only a new
+      // throw can unlock the roll, even if a stationary misread persists.
+      if (logged) return { roll: null, confirmedDice: logged, matchingAttempts, recovering: false };
     }
+
+    if (candidate.length && !sameDice(candidate, dice)
+      && (dice.length !== expectedCount || sameDice(candidate, dice, false))) recovering = true;
 
     let roll: DieValue[] | null = null;
     if (dice.length !== expectedCount) {
@@ -73,13 +75,12 @@ export function createRollTracker(expectedCount: number) {
         matchingAttempts = Math.min(RECOVERY_ATTEMPTS, matchingAttempts + 1);
       }
       const ready = recovering ? matchingAttempts >= RECOVERY_ATTEMPTS : now - candidateSince >= SETTLE_MS;
-      if (ready && (!logged || !sameDice(logged, dice))) {
+      if (ready) {
         logged = dice.map((die) => ({ ...die })).sort((a, b) => a.x - b.x || a.y - b.y);
         roll = logged.map((die) => die.value);
         changedSince = null;
         recovering = false;
       }
-      if (logged && sameDice(logged, dice) && matchingAttempts >= RECOVERY_ATTEMPTS) recovering = false;
     }
     return { roll, confirmedDice: logged ?? [], matchingAttempts, recovering };
   };
