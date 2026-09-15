@@ -5,6 +5,9 @@ import type * as OpenCv from "@techstark/opencv-js";
 import { detectDiceOpenCv } from "./opencv-dice";
 import { loadOpenCv } from "./opencv-runtime";
 import { createRollTracker } from "./roll-tracker";
+import { cameraFrameSize } from "./frame-size";
+
+const FRAME_INTERVAL_MS = 160;
 
 interface DiceReaderProps {
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -29,14 +32,12 @@ export default function DiceReader({ videoRef }: DiceReaderProps) {
       const overlay = overlayRef.current;
       if (!active || !cv || !video || !overlay) return;
       if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
-        timer = setTimeout(readFrame, 160);
+        timer = setTimeout(readFrame, FRAME_INTERVAL_MS);
         return;
       }
 
       try {
-        const scale = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight));
-        const width = Math.round(video.videoWidth * scale);
-        const height = Math.round(video.videoHeight * scale);
+        const { width, height } = cameraFrameSize(video);
         if (frame.width !== width || frame.height !== height) {
           frame.width = overlay.width = width;
           frame.height = overlay.height = height;
@@ -78,18 +79,21 @@ export default function DiceReader({ videoRef }: DiceReaderProps) {
         setStatus("Dice reading failed. Stop and restart the camera to retry.");
         return;
       }
-      timer = setTimeout(readFrame, 160);
+      timer = setTimeout(readFrame, FRAME_INTERVAL_MS);
     }
 
     loadOpenCv().then((runtime) => {
       if (!active) return;
       cv = runtime.cv;
       setStatus("OpenCV ready · looking for dice…");
-      timer = setTimeout(readFrame, 160);
+      timer = setTimeout(readFrame, FRAME_INTERVAL_MS);
     }).catch(() => {
       if (active) setStatus("OpenCV could not load. Stop and restart the camera to retry.");
     });
-    return () => { active = false; clearTimeout(timer); };
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [expectedCount, cameraTilt, videoRef]);
 
   return (
@@ -100,34 +104,34 @@ export default function DiceReader({ videoRef }: DiceReaderProps) {
         <p className="mt-1 text-emerald-300" role="status">Last roll: {lastRoll}</p>
       </div>
       <div className="pointer-events-auto absolute bottom-3 left-3 right-3 flex flex-wrap items-end justify-between gap-2">
-      <label className="rounded-lg bg-black/80 px-3 py-2 text-xs text-white">
-        <span className="mb-1 block">Camera angle: {cameraTilt}°</span>
-        <input
-          type="range" min="0" max="60" step="5" value={cameraTilt}
-          aria-label="Camera angle from overhead"
-          onChange={(event) => {
-            setCameraTilt(Number(event.target.value));
-            setStatus("Looking for dice…");
-            setLastRoll("None yet");
-          }}
-          className="block w-28 accent-emerald-400"
-        />
-      </label>
-      <label className="flex items-center gap-2 rounded-lg bg-black/80 px-3 py-2 text-sm text-white">
-        Dice to read
-        <select
-          aria-label="Dice to read"
-          value={expectedCount}
-          onChange={(event) => {
-            setExpectedCount(Number(event.target.value));
-            setStatus("Looking for dice…");
-            setLastRoll("None yet");
-          }}
-          className="rounded border border-white/30 bg-zinc-900 px-2 py-1 focus-visible:outline-2 focus-visible:outline-emerald-400"
-        >
-          {[1, 2, 3, 4, 5, 6].map((count) => <option key={count} value={count}>{count}</option>)}
-        </select>
-      </label>
+        <label className="rounded-lg bg-black/80 px-3 py-2 text-xs text-white">
+          <span className="mb-1 block">Camera angle: {cameraTilt}°</span>
+          <input
+            type="range" min="0" max="60" step="5" value={cameraTilt}
+            aria-label="Camera angle from overhead"
+            onChange={(event) => {
+              setCameraTilt(Number(event.target.value));
+              setStatus("Looking for dice…");
+              setLastRoll("None yet");
+            }}
+            className="block w-28 accent-emerald-400"
+          />
+        </label>
+        <label className="flex items-center gap-2 rounded-lg bg-black/80 px-3 py-2 text-sm text-white">
+          Dice to read
+          <select
+            aria-label="Dice to read"
+            value={expectedCount}
+            onChange={(event) => {
+              setExpectedCount(Number(event.target.value));
+              setStatus("Looking for dice…");
+              setLastRoll("None yet");
+            }}
+            className="rounded border border-white/30 bg-zinc-900 px-2 py-1 focus-visible:outline-2 focus-visible:outline-emerald-400"
+          >
+            {[1, 2, 3, 4, 5, 6].map((count) => <option key={count} value={count}>{count}</option>)}
+          </select>
+        </label>
       </div>
     </div>
   );

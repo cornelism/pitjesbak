@@ -1,6 +1,3 @@
-import { useEffect, useState } from "react";
-// import { randomRotation } from "../utils";
-
 type Props = {
   value: number;
 };
@@ -12,16 +9,9 @@ const Eye = ({ className }: { className?: string }) => {
 };
 
 export const Die = ({ value }: Props) => {
-  // force re-render to get new random rotation on value change
-  const [className, _] = useState("rotate-0");
-
-  // useEffect(() => {
-  //   setClassName(randomRotation());
-  // }, [value]);
-
   return (
     <div
-      className={`flex h-32 w-32 rounded-xl bg-white shadow-xl relative ${className}`}
+      className="flex h-32 w-32 rounded-xl bg-white shadow-xl relative rotate-0"
     >
       <div className="relative w-full h-full">
         {value === 1 && (

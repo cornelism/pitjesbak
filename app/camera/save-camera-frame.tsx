@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type RefObject } from "react";
+import { cameraFrameSize } from "./frame-size";
 
 export default function SaveCameraFrame({ videoRef }: { videoRef: RefObject<HTMLVideoElement | null> }) {
   const [error, setError] = useState<string | null>(null);
@@ -17,9 +18,9 @@ export default function SaveCameraFrame({ videoRef }: { videoRef: RefObject<HTML
       const frame = document.createElement("canvas");
       // Match the detector's input size and omit its labels so this PNG can be
       // replayed through recognition without the overlay changing the pixels.
-      const scale = Math.min(1, 640 / Math.max(video.videoWidth, video.videoHeight));
-      frame.width = Math.round(video.videoWidth * scale);
-      frame.height = Math.round(video.videoHeight * scale);
+      const { width, height } = cameraFrameSize(video);
+      frame.width = width;
+      frame.height = height;
       const context = frame.getContext("2d");
       if (!context) throw new Error("Canvas unavailable");
       context.drawImage(video, 0, 0, frame.width, frame.height);
