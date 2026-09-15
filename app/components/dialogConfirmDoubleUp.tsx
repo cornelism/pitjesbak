@@ -1,48 +1,55 @@
-import { useState } from "react";
-import { Checkbox } from "./ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  // DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  // DialogTrigger,
-} from "./ui/dialog";
-import { Label } from "./ui/label";
-import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 
 type Props = {
   open: boolean;
+  setMultiplier: (multiplier: number) => void;
+  setOpen: (open: boolean) => void;
 };
 
-export const DialogConfirmDoubleUp = ({ open }: Props) => {
+export const DialogConfirmDoubleUp = ({
+  open,
+  setMultiplier,
+  setOpen,
+}: Props) => {
+  const onDoubleUp = () => {
+    setMultiplier(2);
+    setOpen(false);
+  };
+
+  const onDoNotDoubleUp = () => {
+    setMultiplier(1);
+    setOpen(false);
+  };
+
+  const onStopHere = () => {
+    setMultiplier(1);
+    setOpen(false);
+  };
+
   return (
     <Dialog open={open}>
-      {/* <DialogTrigger>Open</DialogTrigger> */}
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="mb-3">DOUBLE UP OR NOT ?</DialogTitle>
-          <div>
-            <RadioGroup defaultValue="option-one">
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="option-one" id="option-one" />
-                <Label tabIndex={1} htmlFor="option-one">
-                  DOUBLE UP !
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="option-two" id="option-two" />
-                <Label tabIndex={2} htmlFor="option-two">
-                  DON'T DOUBLE UP
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <RadioGroupItem value="option-three" id="option-three" />
-                <Label tabIndex={3} htmlFor="option-three">
-                  STOP HERE
-                </Label>
-              </div>
-            </RadioGroup>
+          <DialogTitle className="invisible">What now ?</DialogTitle>
+          <div className="flex flex-row justify-between">
+            <button
+              onClick={onDoubleUp}
+              className="bg-green-500 px-4 py-2 rounded-md mr-2"
+            >
+              Double up
+            </button>
+            <button
+              onClick={onDoNotDoubleUp}
+              className="bg-yellow-500 px-4 py-2 rounded-md mr-2"
+            >
+              Do not double up
+            </button>
+            <button
+              onClick={onStopHere}
+              className="bg-red-500 px-4 py-2 rounded-md"
+            >
+              Stop here
+            </button>
           </div>
         </DialogHeader>
       </DialogContent>

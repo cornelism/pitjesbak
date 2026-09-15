@@ -47,3 +47,15 @@ To run this project locally:
     ```
 
 4.  Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Camera preview
+
+The home page shows a camera preview. Click **Start camera** and allow camera
+access in your browser. **Stop camera** turns it off; leaving the page also
+releases the camera. Video stays on your device, and no audio is captured.
+Camera access requires HTTPS or localhost. Use **Go to game** to open the dice game.
+
+## Tests
+
+Run `npm test` for the camera permission, playback, and cleanup tests, or
+`npm run test:watch` during development.
