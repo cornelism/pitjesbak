@@ -50,6 +50,33 @@ function affineSignature(points: readonly Point[]): number[] | null {
   return signature(centered.map(([x, y]): Point => [x / sx, (y - xy / xx * x) / sy])).distances;
 }
 
+/** Match a complete face whose dark sides vanished during thresholding.
+ * Use every enclosed pip; do not select a convenient subset or infer missing dots.
+ */
+export function readWholeFacePattern(pips: readonly Pip[], width: number, height: number): DieValue | null {
+  const count = pips.length;
+  if (count !== 4 && count !== 5 && count !== 6) return null;
+  if (!hasConsistentPipSizes(pips) || width <= 0 || height <= 0) return null;
+  const points = pips.map((pip) => pip.point);
+  if (points.some(([x, y]) => !Number.isFinite(x) || !Number.isFinite(y)
+    || x <= 0 || x >= width || y <= 0 || y >= height)) return null;
+  const xs = points.map(([x]) => x), ys = points.map(([, y]) => y);
+  const cx = xs.reduce((sum, x) => sum + x, 0) / count / width;
+  const cy = ys.reduce((sum, y) => sum + y, 0) / count / height;
+  if (Math.hypot(cx - 0.5, cy - 0.5) > 0.18) return null;
+  const spanX = (Math.max(...xs) - Math.min(...xs)) / width;
+  const spanY = (Math.max(...ys) - Math.min(...ys)) / height;
+  if (spanX < 0.3 || spanX > 0.85 || spanY < 0.2 || spanY > 0.85) return null;
+  return matchesAffinePattern(points, count) ? count : null;
+}
+
+function matchesAffinePattern(points: readonly Point[], count: 4 | 5 | 6): boolean {
+  const actual = affineSignature(points);
+  const expected = affinePatternSignatures[count - 1];
+  return actual !== null && expected !== null
+    && actual.every((distance, i) => Math.abs(distance - expected[i]) <= 0.09);
+}
+
 export function readSeparatedTop(pips: readonly Pip[], width: number, height: number): DieValue | null {
   const ordered = [...pips].sort((a, b) => a.point[1] - b.point[1]);
   for (const count of [6, 5, 4] as const) {
@@ -67,9 +94,7 @@ export function readSeparatedTop(pips: readonly Pip[], width: number, height: nu
     const cx = xs.reduce((sum, x) => sum + x, 0) / count;
     if (lowest > height * 0.6 || cy > height * 0.4 || Math.abs(cx / width - 0.5) > 0.18) continue;
     if (Math.max(...xs) - Math.min(...xs) < width * 0.3) continue;
-    const actual = affineSignature(points);
-    const expected = affinePatternSignatures[count - 1];
-    if (actual && expected && actual.every((distance, i) => Math.abs(distance - expected[i]) <= 0.09)) return count;
+    if (matchesAffinePattern(points, count)) return count;
   }
   return null;
 }

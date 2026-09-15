@@ -21,6 +21,8 @@ const newRollPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/angled-dic
 const newRollFrame = { width: newRollPng.width, height: newRollPng.height, data: new Uint8ClampedArray(newRollPng.data) };
 const shadedRollPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/angled-dice-2-4-1.png", import.meta.url)));
 const shadedRollFrame = { width: shadedRollPng.width, height: shadedRollPng.height, data: new Uint8ClampedArray(shadedRollPng.data) };
+const clusteredRollPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/angled-dice-1-6-2.png", import.meta.url)));
+const clusteredRollFrame = { width: clusteredRollPng.width, height: clusteredRollPng.height, data: new Uint8ClampedArray(clusteredRollPng.data) };
 
 function cropNewRoll(x: number, y: number, width: number, height: number) {
   const data = new Uint8ClampedArray(width * height * 4);
@@ -77,6 +79,15 @@ function renderCube(value: DieValue, yaw: number) {
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it("reads the captured 1, 6, 2 roll at its 50-degree camera setting", () => {
+    expect(detectDiceOpenCv(cv, clusteredRollFrame, 50).map((die) => die.value)).toEqual([1, 6, 2]);
+  });
+
+  it.each([0.8, 1.15])("preserves the six in the 1, 6, 2 roll at exposure multiplier %s", (exposure) => {
+    const data = clusteredRollFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...clusteredRollFrame, data }, 50).map((die) => die.value)).toEqual([1, 6, 2]);
+  });
+
   it("reads the browser's raw camera frame with shaded sides: 2, 4, 1", () => {
     expect(detectDiceOpenCv(cv, shadedRollFrame, 45).map((die) => die.value)).toEqual([2, 4, 1]);
   });

@@ -1,5 +1,15 @@
 # Real camera fixtures
 
+## angled-dice-1-6-2.png
+
+- Captured on 2026-09-15 directly from the browser video with **Save camera frame**.
+- Original unannotated 640 × 480 pixels; no contrast correction or overlays.
+- Camera angle control: **50° away from overhead**, not a physical measurement.
+- Manually read top faces, ordered left to right: **1, 6, 2** (total **9**).
+- Approximate die centers: `(219, 277)`, `(333, 237)`, `(373, 321)`.
+- The regression replays the full frame at the captured angle. The screenshot
+  comparison in `docs/screenshots/dice-detection` records the current preprocessing.
+
 ## angled-dice-2-4-1.png
 
 - Captured on 2026-09-15 with **Save camera frame** after starting the camera

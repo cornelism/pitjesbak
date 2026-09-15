@@ -156,4 +156,19 @@ describe("detectDice", () => {
       { value: 3, cx: 162, cy: 100 },
     ]))).toEqual([]);
   });
+
+  it.each<DieValue>([4, 5, 6])("reads an isolated top face %i when dark sides are absent in angled mode", (value) => {
+    for (const angle of [0, 0.4, 0.8, 1.2]) {
+      const frame = makeFrame([{ value, cx: 150, cy: 140, side: 75, angle, tilt: 45, cornerRadius: 5 }]);
+      expect(detectDiceOpenCv(cv, frame, 50).map((die) => die.value), `rotation ${angle}`).toEqual([value]);
+    }
+  });
+
+  it("rejects six nonstandard marks on an isolated face in angled mode", () => {
+    const frame = makeFrame([{
+      value: 6, cx: 150, cy: 140, side: 75, tilt: 45,
+      pips: [[-1, -1], [0, -1], [1, -1], [-1, 1], [0.4, 0.4], [1, 1]],
+    }]);
+    expect(detectDiceOpenCv(cv, frame, 50)).toEqual([]);
+  });
 });

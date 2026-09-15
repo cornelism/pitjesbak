@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import type { DieValue } from "./dice-types";
 import type { Point } from "./face-perspective";
-import { hasConsistentPipSizes, readPipPattern, readSeparatedTop, type Pip } from "./pip-pattern";
+import { hasConsistentPipSizes, readPipPattern, readSeparatedTop, readWholeFacePattern, type Pip } from "./pip-pattern";
 
 // Independent face coordinates; neither production templates nor descriptors
 // are imported, so these tests check the recognition contract.
@@ -111,6 +111,57 @@ describe("readSeparatedTop", () => {
 
   it("rejects an empty cluster", () => {
     expect(readSeparatedTop([], 100, 100)).toBeNull();
+  });
+});
+
+describe("readWholeFacePattern", () => {
+  function face(value: DieValue, angle = 0): Pip[] {
+    return layouts[value].map(([x, y]) => {
+      const rx = x * Math.cos(angle) - y * Math.sin(angle);
+      const ry = x * Math.sin(angle) + y * Math.cos(angle);
+      return { point: [50 + 22 * rx + 6 * ry, 50 + 14 * ry], area: 12 };
+    });
+  }
+
+  it.each<DieValue>([4, 5, 6])("matches the entire face %i under rotation, shear, and foreshortening", (value) => {
+    for (const angle of [0, 0.4, 0.8, 1.2]) {
+      expect(readWholeFacePattern(face(value, angle).reverse(), 100, 100), `rotation ${angle}`).toBe(value);
+    }
+  });
+
+  it("recognizes the six's measured pip centers despite its rounded outline", () => {
+    const points: Point[] = [[28.57, 33], [44.2, 26.7], [22.63, 23.25], [38.22, 17.11], [16.82, 13.56], [32.18, 7.48]];
+    expect(readWholeFacePattern(points.map((point) => ({ point, area: 83 })), 63, 51)).toBe(6);
+  });
+
+  it("rejects an incomplete six instead of guessing its missing pip", () => {
+    expect(readWholeFacePattern(face(6).slice(1), 100, 100)).toBeNull();
+  });
+
+  it("rejects an extra pip instead of selecting the matching six", () => {
+    expect(readWholeFacePattern([...face(6), { point: [50, 70], area: 12 }], 100, 100)).toBeNull();
+  });
+
+  it("rejects six marks that do not form a grid", () => {
+    const pips = face(6);
+    pips[2].point = [50, 45];
+    expect(readWholeFacePattern(pips, 100, 100)).toBeNull();
+  });
+
+  it("rejects a cluster confined to the upper part of a cube", () => {
+    expect(readWholeFacePattern(projectedFace(6), 100, 100)).toBeNull();
+  });
+
+  it("rejects inconsistent pip sizes", () => {
+    const pips = face(6);
+    pips[0].area = 100;
+    expect(readWholeFacePattern(pips, 100, 100)).toBeNull();
+  });
+
+  it.each<Point>([[NaN, 50], [50, Infinity], [0, 50], [101, 50]])("rejects an invalid pip coordinate (%s, %s)", (x, y) => {
+    const pips = face(6);
+    pips[0].point = [x, y];
+    expect(readWholeFacePattern(pips, 100, 100)).toBeNull();
   });
 });
 

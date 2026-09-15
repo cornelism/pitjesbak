@@ -1,7 +1,7 @@
 import type * as OpenCv from "@techstark/opencv-js";
 import type { DetectedDie } from "./dice-types";
 import { faceRectifier, type Point } from "./face-perspective";
-import { hasConsistentPipSizes, readPipPattern, readSeparatedTop, type Pip } from "./pip-pattern";
+import { hasConsistentPipSizes, readPipPattern, readSeparatedTop, readWholeFacePattern, type Pip } from "./pip-pattern";
 
 const CONTRAST_CURVE = Uint8Array.from({ length: 256 }, (_, value) =>
   Math.round(255 * (value / 255) ** 1.5),
@@ -115,7 +115,9 @@ export function detectDiceOpenCv(
           const consistentPips = hasConsistentPipSizes(pips)
             && pips.every((pip) => pip.area / area <= maxPipRatio);
           const value = (consistentPips ? readPipPattern(pips.map((pip) => pip.point)) : null)
-            ?? (tilt > 0 ? readSeparatedTop(allPips.filter((pip) => pip.area / area <= 0.085), w, h) : null);
+            ?? (tilt > 0 ? readSeparatedTop(allPips.filter((pip) => pip.area / area <= 0.085), w, h) : null)
+            ?? (tilt > 0 && allPips.every((pip) => pip.area / area <= 0.085)
+              ? readWholeFacePattern(allPips, w, h) : null);
           if (value) detected.push({ value, x, y, width: w, height: h });
         } finally {
           silhouette.delete();
