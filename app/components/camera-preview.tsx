@@ -3,6 +3,8 @@
 import { Camera, CameraOff } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import DiceReader from "../camera/dice-reader";
+import SaveCameraFrame from "../camera/save-camera-frame";
 
 type CameraState =
   | { status: "idle" }
@@ -122,7 +124,7 @@ export default function CameraPreview() {
         </Link>
       </header>
 
-      <div className="relative aspect-video min-h-64 bg-black">
+      <div className="relative aspect-video min-h-64 w-full bg-black">
         <video
           ref={videoRef}
           aria-label="Live camera preview"
@@ -131,6 +133,7 @@ export default function CameraPreview() {
           playsInline
           className={`absolute inset-0 h-full w-full object-contain ${isLive ? "" : "invisible"}`}
         />
+        {isLive && <DiceReader videoRef={videoRef} />}
         {!isLive && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
             <CameraOff className="h-9 w-9 text-zinc-500" aria-hidden="true" />
@@ -145,6 +148,11 @@ export default function CameraPreview() {
       </div>
 
       <footer className="space-y-4 border-t border-white/10 p-5 sm:px-8">
+        <p className="text-sm text-zinc-400">
+          Use light dice with dark pips on a darker surface. Keep the top faces clear and the dice apart.
+          Angled views are experimental; visible side faces can prevent correct readings.
+          Settled rolls are logged to the browser console.
+        </p>
         <div role="status" aria-live="polite" className="text-sm text-zinc-300">
           {state.status === "error" ? (
             <p className="text-amber-300">{state.message}</p>
@@ -154,6 +162,7 @@ export default function CameraPreview() {
         </div>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="text-sm text-zinc-400">Your video stays on this device. No audio is captured.</p>
+          {isLive && <SaveCameraFrame videoRef={videoRef} />}
           {isLive || isRequesting ? (
             <button type="button" onClick={stopCamera} className="rounded-lg border border-white/20 px-5 py-3 text-sm font-medium hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400">
               {isRequesting ? "Cancel" : "Stop camera"}
