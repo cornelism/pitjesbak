@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import DiceReader from "./dice-reader";
 import { detectDiceOpenCv } from "./opencv-dice";
@@ -7,7 +7,11 @@ import type { DieValue } from "./dice-types";
 vi.mock("./opencv-dice", () => ({ detectDiceOpenCv: vi.fn() }));
 vi.mock("./opencv-runtime", () => ({ loadOpenCv: () => Promise.resolve({ cv: {} }) }));
 
-afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 it.each(["steady", "flickering"])("confirms %s readings, then freezes indicators until a new throw", async (mode) => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
@@ -57,6 +61,21 @@ it.each(["steady", "flickering"])("confirms %s readings, then freezes indicators
   expect(log).toHaveBeenCalledTimes(2);
   expect(screen.getByRole("status").textContent).toBe("Last roll: 1 · 4 · 6");
   expect(fillText.mock.calls.slice(-3).map(([value]) => value)).toEqual(["1", "4", "6"]);
+
+  // Changing either setting must discard the frozen roll and replace the loop.
+  if (mode === "steady") {
+    fireEvent.change(screen.getByLabelText("Camera angle from overhead"), { target: { value: "50" } });
+  } else {
+    values = [1, 4];
+    fireEvent.change(screen.getByLabelText("Dice to read"), { target: { value: "2" } });
+  }
+  expect(screen.getByRole("status").textContent).toBe("Last roll: None yet");
+  await act(async () => {});
+  expect(vi.getTimerCount()).toBe(1);
+  for (let i = 0; i < 7; i++) await attempt();
+  expect(log).toHaveBeenCalledTimes(3);
+  expect(screen.getByRole("status").textContent).toBe(`Last roll: ${values.join(" · ")}`);
+  expect(vi.mocked(detectDiceOpenCv).mock.lastCall?.[2]).toBe(mode === "steady" ? 50 : 45);
 
   unmount();
   expect(vi.getTimerCount()).toBe(0);

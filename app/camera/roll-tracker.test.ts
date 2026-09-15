@@ -25,7 +25,7 @@ describe("roll tracker", () => {
     expect(track(roll(), 2000).roll).toBeNull();
   });
 
-  it("requires ten matching attempts after stationary values flicker", () => {
+  it("waits for a full recovery window after stationary values flicker", () => {
     const track = createRollTracker(3);
     track(roll([2, 4, 4]), 0);
     expect(recover(track).roll).toEqual([2, 4, 6]);

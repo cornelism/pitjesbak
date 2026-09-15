@@ -77,8 +77,8 @@ sampling rate). Eight must agree on every die, and the current reading must matc
 that majority. Up to two misreads or incomplete detections are tolerated; an even
 split remains uncertain. Small box shifts and size changes are tolerated, while
 movement to a new position discards old votes. Once confirmed, the values, marker
-positions and confirmation
-status stay frozen despite subsequent misreads. Removal or clear movement lasting
+positions and confirmation status stay frozen despite subsequent misreads.
+Removal or clear movement lasting
 at least 400 ms unlocks detection for a new throw with normal settling again.
 
 The angle calculation estimates the projected top depth as `width × cos(angle)`.
