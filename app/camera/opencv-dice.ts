@@ -2,6 +2,7 @@ import type * as OpenCv from "@techstark/opencv-js";
 import type { DetectedDie } from "./dice-types";
 import { faceRectifier, type Point } from "./face-perspective";
 import { hasConsistentPipSizes, readPipPattern, readSeparatedTop, readWholeFacePattern, type Pip } from "./pip-pattern";
+import { separateDice } from "./separate-dice";
 
 const CONTRAST_CURVE = Uint8Array.from({ length: 256 }, (_, value) =>
   Math.round(255 * (value / 255) ** 1.5),
@@ -44,6 +45,7 @@ export function detectDiceOpenCv(
       const adjusted = cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
       cv.threshold(gray, binary, adjusted * 0.75, 255, cv.THRESH_BINARY);
     }
+    separateDice(cv, binary);
     cv.findContours(binary, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_NONE);
     const detected: DetectedDie[] = [];
     const tilt = Math.max(0, Math.min(60, cameraTilt)) * Math.PI / 180;

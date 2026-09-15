@@ -1,5 +1,16 @@
 # Real camera fixtures
 
+## angled-dice-3-3-4.png
+
+- Captured on 2026-09-16 directly from the browser video with **Save camera frame**.
+- Original unannotated 640 × 480 camera pixels; no screen capture or preprocessing.
+- Camera angle control: **45° away from overhead**, not a physical measurement.
+- Manually read top faces, ordered left to right: **3, 3, 4** (total **10**).
+- The two nearby threes merge into one outline during thresholding. The original
+  detector rejects their combined six pips and reports only the four.
+- Tests exercise separation before pip counting, including moderate exposure
+  changes and camera angle settings of 40°, 45°, and 50°.
+
 ## angled-dice-1-2-4.png
 
 - Captured on 2026-09-16 directly from the browser video with **Save camera frame**.

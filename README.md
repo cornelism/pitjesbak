@@ -91,6 +91,13 @@ recognition only; the live preview and saved frames retain the original pixels.
 A single centered pip can occupy a larger fraction of the face than individual
 pips on multi-pip faces.
 
+Before selecting faces, the detector checks indented outlines for narrow
+connections between nearby dice. It opens a filled copy of the outline (shrinks
+then expands it) and applies the cut only if multiple substantial pieces remain
+and at least 85% of the silhouette is preserved. Pip holes retain their original
+pixels. This handles narrow contacts; broad overlaps can still require moving
+the dice apart.
+
 Face selection happens before pip counting. With an upright camera, an isolated
 square top projects no taller than its width; a whole cube has additional vertical
 side depth. The detector preserves the entire mask for a complete face and applies
