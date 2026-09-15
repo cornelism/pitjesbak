@@ -1,5 +1,18 @@
 # Real camera fixtures
 
+## bright-dice-1-1-1.png
+
+- Captured on 2026-09-16 directly from the browser video with **Save camera frame**.
+- Original unannotated 640 × 480 camera pixels; no screen capture or preprocessing.
+- Camera angle control: **50° away from overhead**, not a physical measurement.
+- Manually read top faces, ordered left to right: **1, 1, 1** (total **3**).
+- Stronger illumination makes the table dominate even after contrast correction:
+  about 64% of the frame enters the foreground mask, and no dice are read.
+- Splitting the brighter intensity population isolates the dice. The right die's
+  large single pip occupies about 18% of its thresholded face.
+- Tests cover the raw frame, exposure changes, nearby angles, and rejection of
+  uniform frames and invalid large pip marks.
+
 ## angled-dice-2-2-6.png
 
 - Captured on 2026-09-16 directly from the browser video with **Save camera frame**.

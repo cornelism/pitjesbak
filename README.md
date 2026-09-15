@@ -86,10 +86,14 @@ cubic dice. Touching/occluded dice and severe perspective can prevent readings.
 
 When angled-mode thresholding includes more than 30% of the image, the detector
 applies a gamma contrast curve (exponent 1.5) and recalculates the threshold.
-This suppresses table midtones that otherwise merge with the dice. It affects
+This suppresses table midtones that otherwise merge with the dice. If the table
+still dominates, another Otsu split uses only pixels above the previous threshold
+to separate bright dice from the lit table. This fallback keeps its threshold
+strict to prevent table patches from rejoining the faces. These changes affect
 recognition only; the live preview and saved frames retain the original pixels.
-A single centered pip can occupy a larger fraction of the face than individual
-pips on multi-pip faces.
+A single centered pip can occupy up to 20% of the thresholded face, accounting
+for large one-face dots and tighter outlines under bright light. Individual pips
+on multi-pip faces retain the stricter 8.5% limit.
 
 Before selecting faces, the detector checks indented outlines for narrow
 connections between nearby dice. It opens a filled copy of the outline (shrinks

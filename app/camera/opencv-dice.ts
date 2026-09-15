@@ -4,6 +4,8 @@ import { faceRectifier, type Point } from "./face-perspective";
 import { hasConsistentPipSizes, readPipPattern, readSeparatedTop, readWholeFacePattern, type Pip } from "./pip-pattern";
 import { separateDice } from "./separate-dice";
 
+const MAX_SINGLE_PIP_RATIO = 0.2;
+
 const CONTRAST_CURVE = Uint8Array.from({ length: 256 }, (_, value) =>
   Math.round(255 * (value / 255) ** 1.5),
 );
@@ -44,6 +46,16 @@ export function detectDiceOpenCv(
       cv.LUT(gray, curve, gray);
       const adjusted = cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
       cv.threshold(gray, binary, adjusted * 0.75, 255, cv.THRESH_BINARY);
+      if (cv.countNonZero(binary) > width * height * 0.3) {
+        // If the table still dominates, split the brighter population again.
+        // Keep this threshold strict: lowering it reconnects brightly lit
+        // patches of table to the dice.
+        const values = gray.data.filter((value) => value > adjusted);
+        const foreground = own(cv.matFromArray(1, values.length, cv.CV_8UC1, values));
+        const foregroundMask = own(new cv.Mat());
+        const bright = cv.threshold(foreground, foregroundMask, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
+        cv.threshold(gray, binary, bright, 255, cv.THRESH_BINARY);
+      }
     }
     separateDice(cv, binary);
     cv.findContours(binary, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_NONE);
@@ -102,7 +114,7 @@ export function detectDiceOpenCv(
             const pip = contours.get(child);
             try {
               const pipArea = cv.contourArea(pip);
-              if (pipArea < 4 || pipArea / area < 0.003 || pipArea / area > 0.16 || pip.rows < 5) continue;
+              if (pipArea < 4 || pipArea / area < 0.003 || pipArea / area > MAX_SINGLE_PIP_RATIO || pip.rows < 5) continue;
               const ellipse = cv.fitEllipse(pip);
               const axes = [ellipse.size.width, ellipse.size.height];
               if (Math.min(...axes) / Math.max(...axes) < 0.35) continue;
@@ -116,10 +128,11 @@ export function detectDiceOpenCv(
               pip.delete();
             }
           }
-          // Some dice use a larger central dot for one. Other faces still use
-          // the stricter area limit, and every reading must match its layout.
+          // A large central dot can fill up to 20% of a thresholded face,
+          // especially when bright-light segmentation tightens the outline.
+          // Other faces keep the stricter limit; all readings need a valid layout.
           const count = facePips.length;
-          const maxPipRatio = count === 1 ? 0.16 : 0.085;
+          const maxPipRatio = count === 1 ? MAX_SINGLE_PIP_RATIO : 0.085;
           const consistentPips = hasConsistentPipSizes(facePips)
             && facePips.every((pip) => pip.area / area <= maxPipRatio);
           const validatedCount = consistentPips

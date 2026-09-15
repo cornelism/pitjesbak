@@ -35,6 +35,9 @@ const closeRollFrame = { width: closeRollPng.width, height: closeRollPng.height,
 const touchingRollPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/angled-dice-2-2-6.png", import.meta.url)));
 const touchingRollFrame = { width: touchingRollPng.width, height: touchingRollPng.height, data: new Uint8ClampedArray(touchingRollPng.data) };
 
+const brightRollPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/bright-dice-1-1-1.png", import.meta.url)));
+const brightRollFrame = { width: brightRollPng.width, height: brightRollPng.height, data: new Uint8ClampedArray(brightRollPng.data) };
+
 function cropNewRoll(x: number, y: number, width: number, height: number) {
   const data = new Uint8ClampedArray(width * height * 4);
   for (let row = 0; row < height; row++) {
@@ -90,6 +93,45 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it("reads the brightly lit captured 1, 1, 1 roll at 50 degrees", () => {
+    expect(detectDiceOpenCv(cv, brightRollFrame, 50).map((die) => die.value)).toEqual([1, 1, 1]);
+  });
+
+  it.each([0.8, 1.15])("reads the bright 1, 1, 1 roll at exposure multiplier %s", (exposure) => {
+    const data = brightRollFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...brightRollFrame, data }, 50).map((die) => die.value)).toEqual([1, 1, 1]);
+  });
+
+  it.each([45, 55])("reads the bright 1, 1, 1 roll at nearby angle %i", (angle) => {
+    expect(detectDiceOpenCv(cv, brightRollFrame, angle).map((die) => die.value)).toEqual([1, 1, 1]);
+  });
+
+  it.each([0, 80, 160, 255])("does not invent dice in a uniform frame of brightness %i", (brightness) => {
+    const width = 160, height = 120;
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let i = 0; i < data.length; i += 4) data.set([brightness, brightness, brightness, 255], i);
+    expect(detectDiceOpenCv(cv, { width, height, data }, 50)).toEqual([]);
+  });
+
+  it.each([
+    { name: "large centered one", pips: [[80, 80]], radius: 19, expected: [1] },
+    { name: "oversized mark", pips: [[80, 80]], radius: 25, expected: [] },
+    { name: "large off-center mark", pips: [[99, 80]], radius: 17, expected: [] },
+    { name: "oversized pips on a two", pips: [[60, 60], [100, 100]], radius: 15, expected: [] },
+  ])("validates $name without relaxing other pip checks", ({ pips, radius, expected }) => {
+    const width = 160, height = 160;
+    const data = new Uint8ClampedArray(width * height * 4);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const face = x >= 40 && x < 120 && y >= 40 && y < 120;
+        const pip = pips.some(([px, py]) => Math.hypot(x - px, y - py) < radius);
+        const shade = face && !pip ? 230 : 20;
+        data.set([shade, shade, shade, 255], (y * width + x) * 4);
+      }
+    }
+    expect(detectDiceOpenCv(cv, { width, height, data }, 0).map((die) => die.value)).toEqual(expected);
+  });
+
   it("reads the captured touching dice with top faces 2, 2, 6", () => {
     expect(detectDiceOpenCv(cv, touchingRollFrame, 45).map((die) => die.value)).toEqual([2, 2, 6]);
   });
