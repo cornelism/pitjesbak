@@ -19,6 +19,8 @@ const png = PNG.sync.read(readFileSync(new URL("./__fixtures__/angled-dice.png",
 const capturedFrame = { width: png.width, height: png.height, data: new Uint8ClampedArray(png.data) };
 const newRollPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/angled-dice-6-1-5.png", import.meta.url)));
 const newRollFrame = { width: newRollPng.width, height: newRollPng.height, data: new Uint8ClampedArray(newRollPng.data) };
+const shadedRollPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/angled-dice-2-4-1.png", import.meta.url)));
+const shadedRollFrame = { width: shadedRollPng.width, height: shadedRollPng.height, data: new Uint8ClampedArray(shadedRollPng.data) };
 
 function cropNewRoll(x: number, y: number, width: number, height: number) {
   const data = new Uint8ClampedArray(width * height * 4);
@@ -75,6 +77,15 @@ function renderCube(value: DieValue, yaw: number) {
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it("reads the browser's raw camera frame with shaded sides: 2, 4, 1", () => {
+    expect(detectDiceOpenCv(cv, shadedRollFrame, 45).map((die) => die.value)).toEqual([2, 4, 1]);
+  });
+
+  it.each([0.8, 1.15])("reads the shaded roll at exposure multiplier %s", (exposure) => {
+    const data = shadedRollFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...shadedRollFrame, data }, 45).map((die) => die.value)).toEqual([2, 4, 1]);
+  });
+
   // Independently labeled from the raw camera image, not detector predictions.
   // Regression for small rim pips and foreshortened top faces.
   it("reads the new captured roll's top faces from left to right: 6, 1, 5", () => {

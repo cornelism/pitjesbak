@@ -3,6 +3,10 @@ import type { DetectedDie } from "./dice-types";
 import { faceRectifier, type Point } from "./face-perspective";
 import { hasConsistentPipSizes, readPipPattern, readSeparatedTop, type Pip } from "./pip-pattern";
 
+const CONTRAST_CURVE = Uint8Array.from({ length: 256 }, (_, value) =>
+  Math.round(255 * (value / 255) ** 1.5),
+);
+
 /** OpenCV finds whole cubes and enclosed pips. An upright camera's viewing angle
  * determines which part of each cube is its top face, before pattern validation.
  * cameraTilt is degrees away from overhead; zero preserves the entire face.
@@ -32,6 +36,14 @@ export function detectDiceOpenCv(
     // Preserve narrow light rims around small, foreshortened pips. At the
     // unadjusted Otsu threshold those holes can merge with the background.
     if (cameraTilt > 0) cv.threshold(gray, binary, threshold * 0.75, 255, cv.THRESH_BINARY);
+    if (cameraTilt > 0 && cv.countNonZero(binary) > width * height * 0.3) {
+      // A bright table can dominate Otsu's foreground class. Suppress midtones
+      // before recomputing the split, leaving already-separated dice untouched.
+      const curve = own(cv.matFromArray(1, 256, cv.CV_8UC1, CONTRAST_CURVE));
+      cv.LUT(gray, curve, gray);
+      const adjusted = cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
+      cv.threshold(gray, binary, adjusted * 0.75, 255, cv.THRESH_BINARY);
+    }
     cv.findContours(binary, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_NONE);
     const detected: DetectedDie[] = [];
     const tilt = Math.max(0, Math.min(60, cameraTilt)) * Math.PI / 180;
@@ -83,7 +95,7 @@ export function detectDiceOpenCv(
             const pip = contours.get(child);
             try {
               const pipArea = cv.contourArea(pip);
-              if (pipArea < 4 || pipArea / area < 0.003 || pipArea / area > 0.085 || pip.rows < 5) continue;
+              if (pipArea < 4 || pipArea / area < 0.003 || pipArea / area > 0.16 || pip.rows < 5) continue;
               const ellipse = cv.fitEllipse(pip);
               const axes = [ellipse.size.width, ellipse.size.height];
               if (Math.min(...axes) / Math.max(...axes) < 0.35) continue;
@@ -97,9 +109,13 @@ export function detectDiceOpenCv(
               pip.delete();
             }
           }
-          const consistentPips = hasConsistentPipSizes(pips);
+          // Some dice use a larger central dot for one. Other faces still use
+          // the stricter area limit, and every reading must match its layout.
+          const maxPipRatio = pips.length === 1 ? 0.16 : 0.085;
+          const consistentPips = hasConsistentPipSizes(pips)
+            && pips.every((pip) => pip.area / area <= maxPipRatio);
           const value = (consistentPips ? readPipPattern(pips.map((pip) => pip.point)) : null)
-            ?? (tilt > 0 ? readSeparatedTop(allPips, w, h) : null);
+            ?? (tilt > 0 ? readSeparatedTop(allPips.filter((pip) => pip.area / area <= 0.085), w, h) : null);
           if (value) detected.push({ value, x, y, width: w, height: h });
         } finally {
           silhouette.delete();

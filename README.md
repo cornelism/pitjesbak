@@ -60,7 +60,8 @@ Camera access requires HTTPS or localhost. Use **Go to game** to open the dice g
 The camera uses **OpenCV.js**, loaded locally when recognition starts. It finds
 whole dice and their enclosed dark pips, estimates the top-face region from the
 camera angle, and checks the top pip pattern. Side-face pips are excluded before
-logging. The captured real-camera fixtures read **3, 5, 3** and **6, 1, 5** at 45°.
+logging. The captured real-camera fixtures read **3, 5, 3**, **6, 1, 5**, and
+**2, 4, 1** at 45°.
 
 - Use light dice with dark pips on a darker, plain surface and keep dice apart.
 - Keep the camera upright (the visible sides should extend toward the bottom of
@@ -82,6 +83,13 @@ four-corner perspective correction for isolated faces. OpenCV provides the
 and ellipse measurements; this is a geometric detector, not a trained dice model.
 It still depends on contrast, visible pips, an upright camera, and approximately
 cubic dice. Touching/occluded dice and severe perspective can prevent readings.
+
+When angled-mode thresholding includes more than 30% of the image, the detector
+applies a gamma contrast curve (exponent 1.5) and recalculates the threshold.
+This suppresses table midtones that otherwise merge with the dice. It affects
+recognition only; the live preview and saved frames retain the original pixels.
+A single centered pip can occupy a larger fraction of the face than individual
+pips on multi-pip faces.
 
 When a reading fails, use **Save camera frame** to download `dice-camera-frame.png`.
 It captures the current video at the detector's input resolution without green

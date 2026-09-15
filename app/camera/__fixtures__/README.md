@@ -1,5 +1,16 @@
 # Real camera fixtures
 
+## angled-dice-2-4-1.png
+
+- Captured on 2026-09-15 with **Save camera frame** after starting the camera
+  in the browser. This is the actual video element's unannotated 640 × 480
+  frame, not a desktop screenshot or a crop of the app interface.
+- Camera angle control: **45° away from overhead**, not a physical measurement.
+- Manually read top faces, ordered left to right: **2, 4, 1** (total **7**).
+- Approximate die centers: `(345, 238)`, `(486, 185)`, `(509, 395)`.
+- The test passes the exact PNG pixels into OpenCV without image correction.
+  It covers dark side faces and a brighter table surface than the earlier rolls.
+
 ## angled-dice-6-1-5.png
 
 - Captured on 2026-09-15 using **Save camera frame** in the live camera page.
