@@ -20,8 +20,9 @@ the PNG remains the unmodified source even when that retry was used.
 
 Saving is manual and available only on the development server. Normal recognition
 does not upload images or write files. The save endpoint is disabled in production
-and accepts only same-origin, size-limited PNG batches. Captures are deliberately
-not ignored by Git: review and stage the examples worth keeping.
+and accepts only same-origin, size-limited PNG batches. All contents of this
+directory except this README are ignored by Git. Captures and local examples
+stay on disk and are excluded from normal staging, including `git add .`.
 
 ## Recognition behavior
 
@@ -40,12 +41,15 @@ not ignored by Git: review and stage the examples worth keeping.
 - A die that cannot be located at all in the overview cannot yet be recovered
   through this feature.
 
-## Included examples and validation
+## Local examples and validation
 
+- Local examples are optional and are not included in a checkout.
 - `examples/frame-51/`: three actual camera crops from the supplied
   `small-six-dice-3-5-6.png` fixture, independently labelled **3, 5, 6**. The
   source is only 640 × 360; these demonstrate pixel-preserving storage, not
-  high-resolution improvement. A test compares every saved pixel with its source.
+  high-resolution improvement. The storage regression test generates crops from
+  the committed source fixture in a temporary directory and checks saved pixels;
+  it does not depend on local captures.
 - `examples/native-browser/`: a **simulated** 1920 × 1080 camera showing **3, 4, 6**.
   Saved through the real UI and endpoint with digital zoom 2× and camera angle 0°.
   These are generated test images, not a physical camera capture.

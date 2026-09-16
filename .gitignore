@@ -14,6 +14,10 @@
 # testing
 /coverage
 
+# Local camera captures (keep only the documentation in Git)
+/docs/dice-crops/*
+!/docs/dice-crops/README.md
+
 # next.js
 /.next/
 /out/
