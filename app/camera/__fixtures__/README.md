@@ -1,5 +1,18 @@
 # Real camera fixtures
 
+## wide-dice-1-2-1.png
+
+- Captured on 2026-09-16 directly from the browser video with **Save camera frame**.
+- Unannotated 640 × 360 pixels, digital zoom **1×**, angle control **45°**.
+- Manually read top faces from left to right: **1, 2, 1** (total **4**).
+- The outer cubes are wider than they are tall, so the whole-face heuristic
+  includes their side pips and rejects both ones. Their isolated top pips have
+  flattened horizontal ellipses distinct from the lower side marks.
+- Tests cover 45° and 50° and exposure changes. The brighter variant also
+  catches table pixels remaining in the global mask after two Otsu splits.
+- Separate helper tests reject coplanar marks, overlapping upper pips, and
+  off-center or invalid marks instead of selecting a convenient one-pip subset.
+
 ## shaded-distance-dice-3-3-3*.png
 
 - Captured on 2026-09-16 directly from the browser video with **Save camera frame**.

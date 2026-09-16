@@ -116,6 +116,11 @@ offset scales with the scene's bright threshold. Both masks use the same face
 and pip validation; local readings only fill regions without a global reading,
 so each die is counted once. These changes affect
 recognition only; the live preview and saved frames retain the original pixels.
+If multiple table brightness bands still dominate the global mask, up to three
+further Otsu splits isolate its brighter pixels, stopping if the threshold cannot
+increase. A rejected wide cube can also yield a top one when its upper pip is
+clearly separated and its ellipse differs from at least two lower side marks.
+This fallback rejects coplanar pips and requires a centered, foreshortened top pip.
 A single centered pip can occupy up to 20% of the thresholded face, accounting
 for large one-face dots and tighter outlines under bright light. Individual pips
 on multi-pip faces retain the stricter 8.5% limit.

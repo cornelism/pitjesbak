@@ -63,6 +63,9 @@ const distanceFrame = { width: distancePng.width, height: distancePng.height, da
 const distanceLivePng = PNG.sync.read(readFileSync(new URL("./__fixtures__/shaded-distance-dice-3-3-3-live.png", import.meta.url)));
 const distanceLiveFrame = { width: distanceLivePng.width, height: distanceLivePng.height, data: new Uint8ClampedArray(distanceLivePng.data) };
 
+const widePng = PNG.sync.read(readFileSync(new URL("./__fixtures__/wide-dice-1-2-1.png", import.meta.url)));
+const wideFrame = { width: widePng.width, height: widePng.height, data: new Uint8ClampedArray(widePng.data) };
+
 function cropNewRoll(x: number, y: number, width: number, height: number) {
   const data = new Uint8ClampedArray(width * height * 4);
   for (let row = 0; row < height; row++) {
@@ -118,6 +121,15 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it.each([45, 50])("reads the outer dice without their side pips at %i degrees", (angle) => {
+    expect(detectDiceOpenCv(cv, wideFrame, angle).map((die) => die.value)).toEqual([1, 2, 1]);
+  });
+
+  it.each([0.8, 1.15])("reads the wide 1, 2, 1 roll at exposure multiplier %s", (exposure) => {
+    const data = wideFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...wideFrame, data }, 45).map((die) => die.value)).toEqual([1, 2, 1]);
+  });
+
   it("reads the distant dice in a later live frame without duplicate detections", () => {
     expect(detectDiceOpenCv(cv, distanceLiveFrame, 50).map((die) => die.value)).toEqual([3, 3, 3]);
   });

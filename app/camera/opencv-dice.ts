@@ -3,6 +3,7 @@ import type { DetectedDie } from "./dice-types";
 import { faceRectifier, type Point } from "./face-perspective";
 import { hasConsistentPipSizes, readPipPattern, readSeparatedTop, readWholeFacePattern, type Pip } from "./pip-pattern";
 import { separateDice } from "./separate-dice";
+import { readIsolatedTopOne, type EllipticalPip } from "./isolated-top-pip";
 
 const MAX_SINGLE_PIP_RATIO = 0.2;
 
@@ -52,8 +53,19 @@ export function detectDiceOpenCv(
         const values = gray.data.filter((value) => value > adjusted);
         const foreground = own(cv.matFromArray(1, values.length, cv.CV_8UC1, values));
         const foregroundMask = own(new cv.Mat());
-        const bright = cv.threshold(foreground, foregroundMask, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
+        let bright = cv.threshold(foreground, foregroundMask, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
         cv.threshold(gray, binary, bright * 0.95, 255, cv.THRESH_BINARY);
+        // Several lit table regions can occupy successive brightness bands.
+        // Continue splitting while the foreground is still table-sized.
+        for (let pass = 0; pass < 3 && cv.countNonZero(binary) > width * height * 0.3; pass++) {
+          const brighterValues = gray.data.filter((value) => value > bright);
+          if (!brighterValues.length) break;
+          const brighter = own(cv.matFromArray(1, brighterValues.length, cv.CV_8UC1, brighterValues));
+          const next = cv.threshold(brighter, foregroundMask, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
+          if (next <= bright) break;
+          bright = next;
+          cv.threshold(gray, binary, bright * 0.95, 255, cv.THRESH_BINARY);
+        }
         // Recover dim dice against their local surroundings. Scale the offset
         // with scene brightness so exposure changes do not erase small rims.
         local = own(new cv.Mat());
@@ -135,7 +147,7 @@ function readDiceMask(cv: typeof OpenCv, binary: OpenCv.Mat, cameraTilt: number)
             : faceRectifier(top, w, { id: 1, x: left, y: firstY, right, bottom });
           if (!rectify) continue;
           const facePips: Pip[] = [];
-          const allPips: Pip[] = [];
+          const allPips: EllipticalPip[] = [];
           for (let child = hierarchy.data32S[i * 4 + 2]; child !== -1; child = hierarchy.data32S[child * 4]) {
             const pip = contours.get(child);
             try {
@@ -147,7 +159,8 @@ function readDiceMask(cv: typeof OpenCv, binary: OpenCv.Mat, cameraTilt: number)
               const m = cv.moments(pip);
               const px = m.m10 / m.m00 - x;
               const py = m.m01 / m.m00 - y;
-              allPips.push({ point: [px, py], area: pipArea });
+              allPips.push({ point: [px, py], area: pipArea,
+                axisRatio: Math.min(...axes) / Math.max(...axes), angle: ellipse.angle });
               if (!top[Math.round(py) * w + Math.round(px)]) continue;
               facePips.push({ point: [px, py], area: pipArea });
             } finally {
@@ -165,11 +178,13 @@ function readDiceMask(cv: typeof OpenCv, binary: OpenCv.Mat, cameraTilt: number)
             ? readPipPattern(facePips.map((pip) => rectify(pip.point)))
               ?? (tilt > 0 && completeFace ? readWholeFacePattern(facePips, w, h) : null)
             : null;
-          // A complete face is indivisible: never retry with a convenient subset.
           // For cubes, a separated upper cluster can refine the estimated mask.
+          // The one-pip fallback additionally requires ellipse evidence that
+          // the lower marks belong to different planes, not one complete face.
           const value = validatedCount
             ?? (tilt > 0 && !completeFace
-              ? readSeparatedTop(allPips.filter((pip) => pip.area / area <= 0.085), w, h) : null);
+              ? readSeparatedTop(allPips.filter((pip) => pip.area / area <= 0.085), w, h) : null)
+            ?? (tilt > 0 ? readIsolatedTopOne(allPips, w, h) : null);
           if (value) detected.push({ value, x, y, width: w, height: h });
         } finally {
           silhouette.delete();
