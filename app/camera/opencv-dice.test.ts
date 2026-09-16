@@ -55,6 +55,9 @@ const shallowChainLiveFrame = { width: shallowChainLivePng.width, height: shallo
 const nearPipChainPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/touching-dice-3-1-3.png", import.meta.url)));
 const nearPipChainFrame = { width: nearPipChainPng.width, height: nearPipChainPng.height, data: new Uint8ClampedArray(nearPipChainPng.data) };
 
+const rimPipPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/rim-pip-dice-3-3-3.png", import.meta.url)));
+const rimPipFrame = { width: rimPipPng.width, height: rimPipPng.height, data: new Uint8ClampedArray(rimPipPng.data) };
+
 function cropNewRoll(x: number, y: number, width: number, height: number) {
   const data = new Uint8ClampedArray(width * height * 4);
   for (let row = 0; row < height; row++) {
@@ -110,6 +113,15 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it.each([45, 50, 55])("preserves the rim pip in the captured 3, 3, 3 roll at %i degrees", (angle) => {
+    expect(detectDiceOpenCv(cv, rimPipFrame, angle).map((die) => die.value)).toEqual([3, 3, 3]);
+  });
+
+  it.each([0.8, 1.15])("reads the rim-pip roll at exposure multiplier %s", (exposure) => {
+    const data = rimPipFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...rimPipFrame, data }, 50).map((die) => die.value)).toEqual([3, 3, 3]);
+  });
+
   it.each([45, 50])("reads the touching 3, 1, 3 chain without cutting a pip at %i degrees", (angle) => {
     expect(detectDiceOpenCv(cv, nearPipChainFrame, angle).map((die) => die.value)).toEqual([3, 1, 3]);
   });

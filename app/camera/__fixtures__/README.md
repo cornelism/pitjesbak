@@ -1,5 +1,16 @@
 # Real camera fixtures
 
+## rim-pip-dice-3-3-3.png
+
+- Captured on 2026-09-16 directly from the browser video with **Save camera frame**.
+- Original unannotated 640 × 360 pixels, digital zoom **1×**, angle control **50°**.
+- Manually read top faces, ordered left to right: **3, 3, 3** (total **9**).
+- The strict bright-population threshold erases the narrow rim around the left
+  die's upper pip. That pip joins the background, leaving two enclosed pips and
+  causing the detector to reject the die.
+- A 5% reduction of this final threshold preserves the rim. Tests cover the
+  captured frame at 45°, 50°, and 55°, plus moderate exposure changes.
+
 ## touching-dice-3-1-3.png
 
 - Captured on 2026-09-16 directly from the browser video with **Save camera frame**.

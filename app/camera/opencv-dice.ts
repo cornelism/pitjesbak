@@ -48,13 +48,13 @@ export function detectDiceOpenCv(
       cv.threshold(gray, binary, adjusted * 0.75, 255, cv.THRESH_BINARY);
       if (cv.countNonZero(binary) > width * height * 0.3) {
         // If the table still dominates, split the brighter population again.
-        // Keep this threshold strict: lowering it reconnects brightly lit
-        // patches of table to the dice.
+        // Keep the correction small: preserve thin rims around edge pips
+        // without bringing the midtone table back into the foreground.
         const values = gray.data.filter((value) => value > adjusted);
         const foreground = own(cv.matFromArray(1, values.length, cv.CV_8UC1, values));
         const foregroundMask = own(new cv.Mat());
         const bright = cv.threshold(foreground, foregroundMask, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
-        cv.threshold(gray, binary, bright, 255, cv.THRESH_BINARY);
+        cv.threshold(gray, binary, bright * 0.95, 255, cv.THRESH_BINARY);
       }
     }
     separateDice(cv, binary);
