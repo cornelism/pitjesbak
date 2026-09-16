@@ -77,6 +77,12 @@ logging. The captured real-camera fixtures read **3, 5, 3**, **6, 1, 5**, and
 - Set **Camera angle** to the angle away from overhead: **0°** when looking straight
   down, or approximately **45°** for the slanted setup. Adjust in 5° steps to match
   the actual view. This setting resets to 45° when the camera restarts.
+- Focusing or adjusting **Camera angle** shows a transparent grid over the preview.
+  It fills the camera view and clips at the preview edges. Its cells are square
+  at 0° and compress with the selected angle. The guide stays
+  visible while dragging, then fades after two seconds; keyboard changes bring it
+  back. It illustrates the selected setting, rather than measuring the table, and
+  is excluded from detection and saved camera frames.
 - Green boxes label recognized dice; **Last roll** shows the last settled reading.
 
 Steady readings settle after 900 ms. If stationary values change or detections
@@ -217,6 +223,9 @@ The camera and game are independent features. Shared UI primitives live in
   separation stay within this feature. OpenCV memory is released explicitly.
 - `app/camera/tracking`: roll confirmation and motion detection, independent of
   React and OpenCV. This layer decides when to freeze or release a reading.
+- `app/camera/angle-guide`: angle control interactions, projected grid rendering,
+  scoped animation styles, and tests. Its only inputs are the angle and a change
+  callback; it has no dependency on camera capture, detection, or roll tracking.
 - `app/camera/components`: preview, reader controls, frame download, and marker
   rendering. `use-dice-reader` owns React settings and display state;
   `dice-reader-session` owns the sampling loop, detection, and tracking.

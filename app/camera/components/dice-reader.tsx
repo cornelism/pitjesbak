@@ -2,6 +2,7 @@
 
 import type { RefObject } from "react";
 import { useDiceReader } from "../use-dice-reader";
+import CameraAngleControl from "../angle-guide/camera-angle-control";
 
 interface DiceReaderProps {
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -23,25 +24,13 @@ export default function DiceReader({ videoRef, zoom = 1, zoomRevision = 0 }: Dic
   return (
     <div className="pointer-events-none absolute inset-0">
       <canvas ref={overlayRef} aria-hidden="true" className="absolute inset-0 h-full w-full object-contain" />
-      <div className="absolute left-3 top-3 max-w-[calc(100%-1.5rem)] rounded-lg bg-black/80 px-3 py-2 text-xs text-white">
+      <div className="absolute left-3 top-3 z-10 max-w-[calc(100%-1.5rem)] rounded-lg bg-black/80 px-3 py-2 text-xs text-white">
         <p>{status}</p>
         <p className="mt-1 text-emerald-300" role="status">Last roll: {lastRoll}</p>
       </div>
-      <div className="pointer-events-auto absolute bottom-3 left-3 right-3 flex flex-wrap items-end justify-between gap-2">
-        <label className="rounded-lg bg-black/80 px-3 py-2 text-xs text-white">
-          <span className="mb-1 block">Camera angle: {cameraTilt}°</span>
-          <input
-            type="range"
-            min="0"
-            max="60"
-            step="5"
-            value={cameraTilt}
-            aria-label="Camera angle from overhead"
-            onChange={(event) => changeCameraTilt(Number(event.target.value))}
-            className="block w-28 accent-emerald-400"
-          />
-        </label>
-        <label className="flex items-center gap-2 rounded-lg bg-black/80 px-3 py-2 text-sm text-white">
+      <div className="absolute inset-0 flex flex-wrap content-end items-end justify-between gap-2 p-3">
+        <CameraAngleControl angle={cameraTilt} onChange={changeCameraTilt} />
+        <label className="pointer-events-auto relative flex items-center gap-2 rounded-lg bg-black/80 px-3 py-2 text-sm text-white">
           Dice to read
           <select
             aria-label="Dice to read"

@@ -1,0 +1,19 @@
+.guide {
+  overflow: hidden;
+  animation: fade-guide 2s ease-out forwards;
+}
+
+.guide[data-dragging="true"] {
+  animation: none;
+}
+
+@keyframes fade-guide {
+  0%, 75% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guide {
+    animation-timing-function: steps(1, end);
+  }
+}
