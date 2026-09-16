@@ -190,9 +190,10 @@ ray-cast 3D cubes with side pips, and synthetic isolated faces.
 The camera and game are independent features. Shared UI primitives live in
 `app/components/ui`; game-specific components and rules live in `app/game`.
 
-- `app/camera/capture`: camera permissions and track lifecycle (`use-camera`),
-  hardware/digital zoom, and the shared frame sizing/cropping used for detection
-  and downloads.
+- `app/camera/capture`: `camera-session` owns permission requests, playback, and
+  track cleanup; `use-camera` owns React state and user actions. `camera-zoom`
+  reads capabilities and verifies hardware changes. Frame sizing/cropping is
+  shared by detection and downloads.
 - `app/camera/detection`: the OpenCV runtime and pixel-to-die pipeline.
   `opencv-dice` coordinates `dice-masks` → `read-dice-mask` → `top-face` /
   `pip-contours` → `read-die-value`. Pattern validators and touching-dice

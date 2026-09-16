@@ -33,7 +33,13 @@ export function cameraZoom(track: MediaStreamTrack): CameraZoom {
   }
 }
 
-export function applyCameraZoom(track: MediaStreamTrack, value: number): Promise<void> {
+/** Verify the applied setting: some cameras silently ignore zoom constraints. */
+export async function applyCameraZoom(track: MediaStreamTrack, value: number, step: number): Promise<CameraZoom> {
   const constraint: MediaTrackConstraintSet & { zoom: number } = { zoom: value };
-  return track.applyConstraints({ advanced: [constraint] });
+  await track.applyConstraints({ advanced: [constraint] });
+  const actual = cameraZoom(track);
+  if (actual.mode !== "camera" || Math.abs(actual.value - value) > step / 2) {
+    throw new Error("Camera did not apply zoom");
+  }
+  return actual;
 }

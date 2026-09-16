@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { applyCameraZoom, cameraZoom, digitalZoom } from "./camera-zoom";
+import { createCameraSession, cameraErrorMessage, type CameraSession } from "./camera-session";
 
 type CameraState =
   | { status: "idle" }
@@ -9,42 +10,20 @@ type CameraState =
   | { status: "live"; track: MediaStreamTrack }
   | { status: "error"; message: string };
 
-function cameraErrorMessage(error: unknown): string {
-  const name =
-    typeof error === "object" && error !== null && "name" in error
-      ? error.name
-      : "";
-
-  switch (name) {
-    case "NotAllowedError":
-    case "SecurityError":
-      return "Camera access was blocked. Allow camera access in your browser’s site settings, then try again.";
-    case "NotFoundError":
-      return "No camera was found. Connect a camera, then try again.";
-    case "NotReadableError":
-    case "AbortError":
-      return "Your camera could not start. Close other apps using it, then try again.";
-    default:
-      return "The camera preview could not start. Check your camera and try again.";
-  }
-}
-
-/** Own camera tracks, pending requests, and zoom for one preview session. */
+/** React camera state and zoom controls, backed by one active camera session. */
 export function useCamera() {
   const [state, setState] = useState<CameraState>({ status: "idle" });
   const videoRef = useRef<HTMLVideoElement>(null);
-  const requestRef = useRef(0);
-  const cleanupRef = useRef<(() => void) | null>(null);
+  const sessionRef = useRef<CameraSession | null>(null);
   const [zoom, setZoom] = useState(digitalZoom);
   const [zoomPending, setZoomPending] = useState(false);
   const [zoomError, setZoomError] = useState<string | null>(null);
   const [zoomRevision, setZoomRevision] = useState(0);
 
   const releaseCamera = useCallback(() => {
-    // Invalidate pending permission and playback requests, including on unmount.
-    requestRef.current += 1;
-    cleanupRef.current?.();
-    cleanupRef.current = null;
+    sessionRef.current?.stop();
+    // Session identity also invalidates pending startup and zoom responses.
+    sessionRef.current = null;
   }, []);
 
   useEffect(() => releaseCamera, [releaseCamera]);
@@ -61,53 +40,29 @@ export function useCamera() {
       return;
     }
 
-    const request = requestRef.current;
     setZoomPending(false);
     setZoomError(null);
     setState({ status: "requesting" });
 
-    try {
-      const videoConstraints: MediaTrackConstraints & { zoom: boolean } = {
-        width: { ideal: 1920 }, height: { ideal: 1080 }, zoom: true,
-      };
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: videoConstraints,
-        audio: false,
-      });
-      const video = videoRef.current;
-
-      if (request !== requestRef.current || !video) {
-        stream.getTracks().forEach((track) => track.stop());
-        return;
-      }
-
-      function handleEnded() {
+    const session = createCameraSession({
+      getVideo: () => videoRef.current,
+      onEnded: () => {
         releaseCamera();
         setState({
           status: "error",
           message: "The camera disconnected or access ended. Check your camera, then try again.",
         });
-      }
+      },
+    });
+    sessionRef.current = session;
 
-      const tracks = stream.getTracks();
-      cleanupRef.current = () => {
-        tracks.forEach((track) => {
-          track.removeEventListener("ended", handleEnded);
-          track.stop();
-        });
-        video.srcObject = null;
-      };
-      tracks.forEach((track) => track.addEventListener("ended", handleEnded));
-      video.srcObject = stream;
-      await video.play();
-
-      if (request === requestRef.current) {
-        const track = stream.getVideoTracks()[0];
-        setZoom(cameraZoom(track));
-        setState({ status: "live", track });
-      }
+    try {
+      const track = await session.start();
+      if (sessionRef.current !== session || !track) return;
+      setZoom(cameraZoom(track));
+      setState({ status: "live", track });
     } catch (error: unknown) {
-      if (request !== requestRef.current) return;
+      if (sessionRef.current !== session) return;
       releaseCamera();
       setState({ status: "error", message: cameraErrorMessage(error) });
     }
@@ -119,30 +74,26 @@ export function useCamera() {
   }
 
   async function changeZoom(value: number) {
-    if (state.status !== "live" || zoomPending) return;
+    const session = sessionRef.current;
+    if (state.status !== "live" || !session || zoomPending) return;
     setZoomError(null);
     if (zoom.mode === "digital") {
       setZoom({ ...zoom, value });
       return;
     }
-    const request = requestRef.current;
     setZoomPending(true);
     try {
-      await applyCameraZoom(state.track, value);
-      if (request !== requestRef.current) return;
-      const actual = cameraZoom(state.track);
-      if (actual.mode !== "camera" || Math.abs(actual.value - value) > zoom.step / 2) {
-        throw new Error("Camera did not apply zoom");
-      }
+      const actual = await applyCameraZoom(state.track, value, zoom.step);
+      if (sessionRef.current !== session) return;
       setZoom(actual);
       setZoomRevision((revision) => revision + 1);
     } catch {
-      if (request !== requestRef.current) return;
+      if (sessionRef.current !== session) return;
       setZoom(digitalZoom());
       setZoomRevision((revision) => revision + 1);
       setZoomError("Camera zoom is unavailable. Use digital zoom instead.");
     } finally {
-      if (request === requestRef.current) setZoomPending(false);
+      if (sessionRef.current === session) setZoomPending(false);
     }
   }
 
