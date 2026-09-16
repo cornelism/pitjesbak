@@ -5,9 +5,11 @@ import { useDiceReader } from "./use-dice-reader";
 
 interface DiceReaderProps {
   videoRef: RefObject<HTMLVideoElement | null>;
+  zoom?: number;
+  zoomRevision?: number;
 }
 
-export default function DiceReader({ videoRef }: DiceReaderProps) {
+export default function DiceReader({ videoRef, zoom = 1, zoomRevision = 0 }: DiceReaderProps) {
   const {
     overlayRef,
     expectedCount,
@@ -16,7 +18,7 @@ export default function DiceReader({ videoRef }: DiceReaderProps) {
     lastRoll,
     changeCameraTilt,
     changeExpectedCount,
-  } = useDiceReader(videoRef);
+  } = useDiceReader(videoRef, zoom, zoomRevision);
 
   return (
     <div className="pointer-events-none absolute inset-0">

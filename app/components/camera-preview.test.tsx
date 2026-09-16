@@ -5,7 +5,7 @@ import CameraPreview from "./camera-preview";
 
 function createStream() {
   const track = Object.assign(new EventTarget(), { stop: vi.fn() });
-  return { stream: { getTracks: () => [track] }, track };
+  return { stream: { getTracks: () => [track], getVideoTracks: () => [track] }, track };
 }
 
 function deferred<T>() {
@@ -29,6 +29,77 @@ function startCamera() {
 }
 
 describe("CameraPreview", () => {
+  it("uses digital zoom without hardware support and clips the preview to its source aspect ratio", async () => {
+    getUserMedia.mockResolvedValue(createStream().stream);
+    render(<CameraPreview />);
+    startCamera();
+    const slider = await screen.findByRole("slider", { name: "Camera zoom" });
+    fireEvent.change(slider, { target: { value: "2" } });
+    expect(screen.getByText("Zoom: 2.0× (digital)")).toBeDefined();
+    const video = screen.getByLabelText<HTMLVideoElement>("Live camera preview");
+    expect(video.style.transform).toBe("scale(2)");
+    Object.defineProperties(video, { videoWidth: { value: 640 }, videoHeight: { value: 480 } });
+    fireEvent.loadedMetadata(video);
+    expect(parseFloat(video.parentElement!.style.aspectRatio)).toBeCloseTo(4 / 3);
+  });
+
+  it("applies hardware zoom without also cropping the preview", async () => {
+    const { stream, track } = createStream();
+    let value = 1;
+    const applyConstraints = vi.fn(async (constraints: { advanced: { zoom: number }[] }) => {
+      value = constraints.advanced[0].zoom;
+    });
+    Object.assign(track, {
+      getCapabilities: () => ({ zoom: { min: 1, max: 4, step: 0.1 } }),
+      getSettings: () => ({ zoom: value }), applyConstraints,
+    });
+    getUserMedia.mockResolvedValue(stream);
+    render(<CameraPreview />);
+    startCamera();
+    const slider = await screen.findByRole("slider", { name: "Camera zoom" });
+    await act(async () => { fireEvent.change(slider, { target: { value: "2" } }); });
+    expect(applyConstraints).toHaveBeenCalledWith({ advanced: [{ zoom: 2 }] });
+    expect(screen.getByText("Zoom: 2.0× (camera)")).toBeDefined();
+    expect(screen.getByLabelText<HTMLVideoElement>("Live camera preview").style.transform).toBe("scale(1)");
+  });
+
+  it.each(["reject", "ignore"])("falls back to digital zoom when the camera constraints %s", async (behavior) => {
+    const { stream, track } = createStream();
+    Object.assign(track, {
+      getCapabilities: () => ({ zoom: { min: 1, max: 4, step: 0.1 } }),
+      getSettings: () => ({ zoom: 1 }),
+      applyConstraints: behavior === "reject" ? vi.fn().mockRejectedValue(new Error("Unsupported")) : vi.fn().mockResolvedValue(undefined),
+    });
+    getUserMedia.mockResolvedValue(stream);
+    render(<CameraPreview />);
+    startCamera();
+    const slider = await screen.findByRole("slider", { name: "Camera zoom" });
+    await act(async () => { fireEvent.change(slider, { target: { value: "2" } }); });
+    expect(screen.getByRole("alert").textContent).toContain("Use digital zoom");
+    fireEvent.change(slider, { target: { value: "2" } });
+    expect(screen.getByText("Zoom: 2.0× (digital)")).toBeDefined();
+  });
+
+  it("ignores a pending zoom response after the camera is restarted", async () => {
+    const old = createStream();
+    const current = createStream();
+    const change = deferred<void>();
+    Object.assign(old.track, {
+      getCapabilities: () => ({ zoom: { min: 1, max: 4, step: 0.1 } }),
+      getSettings: () => ({ zoom: 2 }), applyConstraints: () => change.promise,
+    });
+    getUserMedia.mockResolvedValueOnce(old.stream).mockResolvedValueOnce(current.stream);
+    render(<CameraPreview />);
+    startCamera();
+    fireEvent.change(await screen.findByRole("slider", { name: "Camera zoom" }), { target: { value: "3" } });
+    fireEvent.click(screen.getByRole("button", { name: "Stop camera" }));
+    startCamera();
+    await screen.findByText("Zoom: 1.0× (digital)");
+    await act(async () => { change.resolve(); });
+    expect(screen.getByText("Zoom: 1.0× (digital)")).toBeDefined();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
   it("requests video only after starting and releases the stream when stopped", async () => {
     const { stream, track } = createStream();
     getUserMedia.mockResolvedValue(stream);
@@ -38,7 +109,9 @@ describe("CameraPreview", () => {
     startCamera();
     const stop = await screen.findByRole("button", { name: "Stop camera" });
     const video = screen.getByLabelText<HTMLVideoElement>("Live camera preview");
-    expect(getUserMedia).toHaveBeenCalledExactlyOnceWith({ video: true, audio: false });
+    expect(getUserMedia).toHaveBeenCalledExactlyOnceWith({
+      video: { width: { ideal: 1920 }, height: { ideal: 1080 }, zoom: true }, audio: false,
+    });
     expect(video.srcObject).toBe(stream);
     expect(video.play).toHaveBeenCalledOnce();
     expect(video.muted).toBe(true);

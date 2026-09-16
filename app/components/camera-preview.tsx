@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import DiceReader from "../camera/dice-reader";
 import SaveCameraFrame from "../camera/save-camera-frame";
+import { applyCameraZoom, cameraZoom, digitalZoom } from "../camera/camera-zoom";
 
 type CameraState =
   | { status: "idle" }
   | { status: "requesting" }
-  | { status: "live" }
+  | { status: "live"; track: MediaStreamTrack }
   | { status: "error"; message: string };
 
 function cameraErrorMessage(error: unknown): string {
@@ -37,6 +38,11 @@ export default function CameraPreview() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const requestRef = useRef(0);
   const cleanupRef = useRef<(() => void) | null>(null);
+  const [zoom, setZoom] = useState(digitalZoom);
+  const [zoomPending, setZoomPending] = useState(false);
+  const [zoomError, setZoomError] = useState<string | null>(null);
+  const [zoomRevision, setZoomRevision] = useState(0);
+  const [aspectRatio, setAspectRatio] = useState(16 / 9);
 
   const releaseCamera = useCallback(() => {
     // Invalidate pending permission and playback requests, including on unmount.
@@ -60,11 +66,16 @@ export default function CameraPreview() {
     }
 
     const request = requestRef.current;
+    setZoomPending(false);
+    setZoomError(null);
     setState({ status: "requesting" });
 
     try {
+      const videoConstraints: MediaTrackConstraints & { zoom: boolean } = {
+        width: { ideal: 1920 }, height: { ideal: 1080 }, zoom: true,
+      };
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+        video: videoConstraints,
         audio: false,
       });
       const video = videoRef.current;
@@ -95,7 +106,9 @@ export default function CameraPreview() {
       await video.play();
 
       if (request === requestRef.current) {
-        setState({ status: "live" });
+        const track = stream.getVideoTracks()[0];
+        setZoom(cameraZoom(track));
+        setState({ status: "live", track });
       }
     } catch (error: unknown) {
       if (request !== requestRef.current) return;
@@ -109,8 +122,37 @@ export default function CameraPreview() {
     setState({ status: "idle" });
   }
 
+  async function changeZoom(value: number) {
+    if (state.status !== "live" || zoomPending) return;
+    setZoomError(null);
+    if (zoom.mode === "digital") {
+      setZoom({ ...zoom, value });
+      return;
+    }
+    const request = requestRef.current;
+    setZoomPending(true);
+    try {
+      await applyCameraZoom(state.track, value);
+      if (request !== requestRef.current) return;
+      const actual = cameraZoom(state.track);
+      if (actual.mode !== "camera" || Math.abs(actual.value - value) > zoom.step / 2) {
+        throw new Error("Camera did not apply zoom");
+      }
+      setZoom(actual);
+      setZoomRevision((revision) => revision + 1);
+    } catch {
+      if (request !== requestRef.current) return;
+      setZoom(digitalZoom());
+      setZoomRevision((revision) => revision + 1);
+      setZoomError("Camera zoom is unavailable. Use digital zoom instead.");
+    } finally {
+      if (request === requestRef.current) setZoomPending(false);
+    }
+  }
+
   const isLive = state.status === "live";
   const isRequesting = state.status === "requesting";
+  const cropZoom = zoom.mode === "digital" ? zoom.value : 1;
 
   return (
     <section className="m-4 w-full max-w-4xl overflow-hidden rounded-2xl border border-white/15 bg-zinc-950 text-white shadow-2xl sm:m-8" aria-labelledby="camera-title">
@@ -124,16 +166,21 @@ export default function CameraPreview() {
         </Link>
       </header>
 
-      <div className="relative aspect-video min-h-64 w-full bg-black">
+      <div className="relative w-full overflow-hidden bg-black" style={{ aspectRatio }}>
         <video
           ref={videoRef}
           aria-label="Live camera preview"
           autoPlay
           muted
           playsInline
+          onLoadedMetadata={(event) => {
+            const video = event.currentTarget;
+            if (video.videoWidth && video.videoHeight) setAspectRatio(video.videoWidth / video.videoHeight);
+          }}
+          style={{ transform: `scale(${isLive ? cropZoom : 1})` }}
           className={`absolute inset-0 h-full w-full object-contain ${isLive ? "" : "invisible"}`}
         />
-        {isLive && <DiceReader videoRef={videoRef} />}
+        {isLive && <DiceReader videoRef={videoRef} zoom={cropZoom} zoomRevision={zoomRevision} />}
         {!isLive && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
             <CameraOff className="h-9 w-9 text-zinc-500" aria-hidden="true" />
@@ -148,6 +195,25 @@ export default function CameraPreview() {
       </div>
 
       <footer className="space-y-4 border-t border-white/10 p-5 sm:px-8">
+        {isLive && (
+          <div>
+            <label className="flex flex-wrap items-center gap-3 text-sm text-zinc-200">
+              <span>Zoom: {(zoom.value / zoom.min).toFixed(1)}× ({zoom.mode})</span>
+              <input
+                type="range"
+                aria-label="Camera zoom"
+                min={zoom.min}
+                max={zoom.max}
+                step={zoom.step}
+                value={zoom.value}
+                disabled={zoomPending}
+                onChange={(event) => { void changeZoom(Number(event.target.value)); }}
+                className="w-48 accent-emerald-400"
+              />
+            </label>
+            {zoomError && <p role="alert" className="mt-2 text-sm text-amber-300">{zoomError}</p>}
+          </div>
+        )}
         <p className="text-sm text-zinc-400">
           OpenCV reads light dice with dark pips on a darker surface. Keep the camera upright and the dice apart.
           Set Camera angle to 0° for overhead or about 45° for a slanted view.
@@ -162,7 +228,7 @@ export default function CameraPreview() {
         </div>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <p className="text-sm text-zinc-400">Your video stays on this device. No audio is captured.</p>
-          {isLive && <SaveCameraFrame videoRef={videoRef} />}
+          {isLive && <SaveCameraFrame videoRef={videoRef} zoom={cropZoom} />}
           {isLive || isRequesting ? (
             <button type="button" onClick={stopCamera} className="rounded-lg border border-white/20 px-5 py-3 text-sm font-medium hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400">
               {isRequesting ? "Cancel" : "Stop camera"}

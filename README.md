@@ -57,6 +57,14 @@ Camera access requires HTTPS or localhost. Use **Go to game** to open the dice g
 
 ### Read physical dice
 
+Use **Zoom** below the preview to enlarge the dice. The slider uses camera zoom
+when the browser exposes it, otherwise centered digital zoom from 1× to 3×.
+If the camera rejects zoom control, the slider falls back to digital zoom.
+Recognition and saved frames use the same crop as the preview. Changing zoom
+resets roll confirmation while preserving the angle and dice-count settings.
+The app requests up to 1920 × 1080 camera input and crops before resizing for
+detection. Digital zoom enlarges the available pixels; it cannot add detail.
+
 The camera uses **OpenCV.js**, loaded locally when recognition starts. It finds
 whole dice and their enclosed dark pips, estimates the top-face region from the
 camera angle, and checks the top pip pattern. Side-face pips are excluded before

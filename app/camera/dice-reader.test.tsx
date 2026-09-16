@@ -21,16 +21,18 @@ it.each(["steady", "flickering"])("confirms %s readings, then freezes indicators
   const fillText = vi.fn();
   const strokeRect = vi.fn();
   const clearRect = vi.fn();
+  const drawImage = vi.fn();
   let image = motionFrame(([1, 4, 2] as const).map((value, i) => ({ value, x: i * 80, y: 40, width: 50, height: 50 })));
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({
-    drawImage: vi.fn(), getImageData: vi.fn().mockImplementation(() => image), clearRect,
+    drawImage, getImageData: vi.fn().mockImplementation(() => image), clearRect,
     strokeRect, fillRect: vi.fn(), fillText,
   } as unknown as CanvasRenderingContext2D);
   const log = vi.spyOn(console, "log").mockImplementation(() => {});
   let values: DieValue[] = [1, 4, 2];
   let offset = 0;
   vi.mocked(detectDiceOpenCv).mockImplementation(() => values.map((value, i) => ({ value, x: i * 80 + offset, y: 40, width: 50, height: 50 })));
-  const { unmount } = render(<DiceReader videoRef={{ current: video }} />);
+  const videoRef = { current: video };
+  const { unmount, rerender } = render(<DiceReader videoRef={videoRef} />);
   const attempt = async () => { await act(async () => { await vi.advanceTimersByTimeAsync(160); }); };
   await act(async () => {});
 
@@ -82,6 +84,16 @@ it.each(["steady", "flickering"])("confirms %s readings, then freezes indicators
   expect(log).toHaveBeenCalledTimes(3);
   expect(screen.getByRole("status").textContent).toBe(`Last roll: ${values.join(" · ")}`);
   expect(vi.mocked(detectDiceOpenCv).mock.lastCall?.[2]).toBe(mode === "steady" ? 50 : 45);
+
+  // Zoom resets confirmation but preserves angle/count settings and uses the
+  // same source crop as saved frames and the centered preview.
+  await act(async () => { rerender(<DiceReader videoRef={videoRef} zoom={2} zoomRevision={1} />); });
+  expect(screen.getByRole("status").textContent).toBe("Last roll: None yet");
+  expect(screen.getByLabelText<HTMLInputElement>("Camera angle from overhead").value).toBe(mode === "steady" ? "50" : "45");
+  expect(screen.getByLabelText<HTMLSelectElement>("Dice to read").value).toBe(mode === "steady" ? "3" : "2");
+  expect(vi.getTimerCount()).toBe(1);
+  await attempt();
+  expect(drawImage).toHaveBeenLastCalledWith(video, 160, 120, 320, 240, 0, 0, 640, 480);
 
   unmount();
   expect(vi.getTimerCount()).toBe(0);

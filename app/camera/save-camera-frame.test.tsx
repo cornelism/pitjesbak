@@ -15,7 +15,7 @@ function camera(ready = true) {
 }
 
 describe("SaveCameraFrame", () => {
-  it("downloads an unannotated PNG at the detector's resolution only on click", () => {
+  it.each([1, 2])("downloads the unannotated detector input at zoom %s only on click", (zoom) => {
     const videoRef = camera();
     const drawImage = vi.fn();
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
@@ -24,10 +24,11 @@ describe("SaveCameraFrame", () => {
       expect(this.download).toBe("dice-camera-frame.png");
       expect(this.href).toBe("data:image/png;base64,test");
     });
-    render(<SaveCameraFrame videoRef={videoRef} />);
+    render(<SaveCameraFrame videoRef={videoRef} zoom={zoom} />);
     expect(drawImage).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Save camera frame" }));
-    expect(drawImage).toHaveBeenCalledWith(videoRef.current, 0, 0, 640, 360);
+    const crop = zoom === 1 ? [0, 0, 640, 360] : [480, 270, 960, 540, 0, 0, 640, 360];
+    expect(drawImage).toHaveBeenCalledWith(videoRef.current, ...crop);
     expect(encode).toHaveBeenCalledWith("image/png");
     expect(download).toHaveBeenCalledOnce();
     expect(document.querySelector("a[download]")).toBeNull();

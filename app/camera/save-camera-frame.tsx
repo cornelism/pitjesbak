@@ -2,8 +2,12 @@
 
 import { useState, type RefObject } from "react";
 import { cameraFrameSize } from "./frame-size";
+import { drawCameraFrame } from "./draw-camera-frame";
 
-export default function SaveCameraFrame({ videoRef }: { videoRef: RefObject<HTMLVideoElement | null> }) {
+export default function SaveCameraFrame({ videoRef, zoom = 1 }: {
+  videoRef: RefObject<HTMLVideoElement | null>;
+  zoom?: number;
+}) {
   const [error, setError] = useState<string | null>(null);
 
   function saveFrame() {
@@ -23,7 +27,7 @@ export default function SaveCameraFrame({ videoRef }: { videoRef: RefObject<HTML
       frame.height = height;
       const context = frame.getContext("2d");
       if (!context) throw new Error("Canvas unavailable");
-      context.drawImage(video, 0, 0, frame.width, frame.height);
+      drawCameraFrame(context, video, zoom);
       const link = document.createElement("a");
       link.href = frame.toDataURL("image/png");
       link.download = "dice-camera-frame.png";

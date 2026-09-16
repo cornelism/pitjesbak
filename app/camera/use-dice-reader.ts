@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type RefObject } from "react";
 import type * as OpenCv from "@techstark/opencv-js";
 import type { DetectedDie } from "./dice-types";
 import { cameraFrameSize } from "./frame-size";
+import { drawCameraFrame } from "./draw-camera-frame";
 import { detectDiceOpenCv } from "./opencv-dice";
 import { loadOpenCv } from "./opencv-runtime";
 import { createRollMotionTracker } from "./roll-motion";
@@ -40,7 +41,7 @@ function readingStatus(tracked: RollTrackingState, visibleCount: number, expecte
 }
 
 /** Own the camera sampling loop, settings and confirmation display together. */
-export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>) {
+export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>, zoom = 1, zoomRevision = 0) {
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const [expectedCount, setExpectedCount] = useState(3);
   const [cameraTilt, setCameraTilt] = useState(45);
@@ -79,7 +80,7 @@ export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>) {
           return;
         }
 
-        context.drawImage(video, 0, 0, width, height);
+        drawCameraFrame(context, video, zoom);
         const image = context.getImageData(0, 0, width, height);
         const dice = detectDiceOpenCv(cv, image, cameraTilt);
         const tracked = trackRoll(dice, performance.now(), motion.hasMoved(image));
@@ -112,6 +113,7 @@ export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>) {
       .then((runtime) => {
         if (!active) return;
         cv = runtime.cv;
+        setLastRoll("None yet");
         setStatus("OpenCV ready · looking for dice…");
         timer = setTimeout(readFrame, FRAME_INTERVAL_MS);
       })
@@ -122,7 +124,7 @@ export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>) {
       active = false;
       clearTimeout(timer);
     };
-  }, [expectedCount, cameraTilt, videoRef]);
+  }, [expectedCount, cameraTilt, videoRef, zoom, zoomRevision]);
 
   function resetReading() {
     setStatus("Looking for dice…");
