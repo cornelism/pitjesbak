@@ -3,9 +3,10 @@
 import { useEffect, useEffectEvent, useRef, useState, type RefObject } from "react";
 import { startDiceReader } from "./dice-reader-session";
 import type { PlayArea } from "./play-area/play-area";
+import type { DieCropBatch } from "./die-crops/types";
 
 /** React settings and display state; each settings change replaces the reader session. */
-export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>, zoom = 1, zoomRevision = 0, onDiceRemoved?: () => void) {
+export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>, zoom = 1, zoomRevision = 0, onDiceRemoved?: () => void, onCrops?: (batch: DieCropBatch | null) => void) {
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const [expectedCount, setExpectedCount] = useState(3);
   const [cameraTilt, setCameraTilt] = useState(45);
@@ -13,6 +14,7 @@ export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>, zoom
   const [lastRoll, setLastRoll] = useState("None yet");
   const [diceRemoved, setDiceRemoved] = useState(false);
   const [surface, setSurface] = useState<{ area: PlayArea | null; revision: number } | null>(null);
+  const notifyCrops = useEffectEvent((batch: DieCropBatch | null) => onCrops?.(batch));
   const notifyRemoval = useEffectEvent(() => {
     setDiceRemoved(true);
     setLastRoll("None yet");
@@ -29,6 +31,7 @@ export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>, zoom
       video, overlay, expectedCount, cameraTilt, zoom,
       onReady: () => setLastRoll("None yet"),
       onStatus: setStatus,
+      onCrops: notifyCrops,
       onDiceRemoved: notifyRemoval,
       onDiceVisible: () => setDiceRemoved(false),
       onPlayArea: (area) => setSurface({ area, revision: zoomRevision }),

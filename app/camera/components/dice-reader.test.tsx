@@ -93,7 +93,7 @@ it.each(["steady", "flickering"])("confirms %s readings, then freezes indicators
   expect(screen.getByLabelText<HTMLSelectElement>("Dice to read").value).toBe(mode === "steady" ? "3" : "2");
   expect(vi.getTimerCount()).toBe(1);
   await attempt();
-  expect(drawImage).toHaveBeenLastCalledWith(video, 160, 120, 320, 240, 0, 0, 640, 480);
+  expect(drawImage).toHaveBeenLastCalledWith(expect.any(HTMLCanvasElement), 160, 120, 320, 240, 0, 0, 640, 480);
 
   unmount();
   expect(vi.getTimerCount()).toBe(0);

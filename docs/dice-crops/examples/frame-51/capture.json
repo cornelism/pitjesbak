@@ -1,0 +1,76 @@
+{
+  "sourceFile": "app/camera/__fixtures__/small-six-dice-3-5-6.png",
+  "description": "Unmodified crops from the supplied 640×360 raw frame. These demonstrate storage and are not higher-resolution camera captures.",
+  "sourceSize": {
+    "width": 640,
+    "height": 360
+  },
+  "overviewSize": {
+    "width": 640,
+    "height": 360
+  },
+  "cameraTilt": 70,
+  "zoom": 1,
+  "crops": [
+    {
+      "file": "die-01.png",
+      "source": {
+        "x": 0,
+        "y": 213,
+        "width": 168,
+        "height": 146
+      },
+      "candidate": {
+        "x": 56,
+        "y": 269,
+        "width": 56,
+        "height": 34
+      },
+      "expectedValue": 3,
+      "overviewValue": 3,
+      "cropValue": null,
+      "used": false,
+      "preprocessing": "raw"
+    },
+    {
+      "file": "die-02.png",
+      "source": {
+        "x": 180,
+        "y": 76,
+        "width": 90,
+        "height": 77
+      },
+      "candidate": {
+        "x": 210,
+        "y": 106,
+        "width": 30,
+        "height": 17
+      },
+      "expectedValue": 5,
+      "overviewValue": 5,
+      "cropValue": null,
+      "used": false,
+      "preprocessing": "raw"
+    },
+    {
+      "file": "die-03.png",
+      "source": {
+        "x": 270,
+        "y": 82,
+        "width": 87,
+        "height": 79
+      },
+      "candidate": {
+        "x": 299,
+        "y": 111,
+        "width": 29,
+        "height": 21
+      },
+      "expectedValue": 6,
+      "overviewValue": 6,
+      "cropValue": null,
+      "used": false,
+      "preprocessing": "raw"
+    }
+  ]
+}

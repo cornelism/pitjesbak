@@ -7,6 +7,8 @@ import type { FaceBounds } from "./top-face";
 import { sameRimTop } from "./rim-pips";
 import { overlapsDie, sameFace } from "./face-overlap";
 
+export interface DiceCandidate extends FaceBounds { pipCount: number }
+
 /** OpenCV locates bright dice, isolates their top faces, and counts enclosed pips.
  * Pattern validation checks that count after the face has been selected.
  * cameraTilt is degrees away from overhead; zero preserves the entire face.
@@ -15,6 +17,7 @@ export function detectDiceOpenCv(
   cv: typeof OpenCv,
   frame: Pick<ImageData, "data" | "width" | "height">,
   cameraTilt: number,
+  onCandidates?: (candidates: readonly DiceCandidate[]) => void,
 ): DetectedDie[] {
   const { width, height, data } = frame;
   if (!width || !height || data.length !== width * height * 4 || !Number.isFinite(cameraTilt)) return [];
@@ -110,6 +113,7 @@ export function detectDiceOpenCv(
         ));
       }
     }
+    onCandidates?.(candidates);
     return detected.sort((a, b) => a.x - b.x || a.y - b.y);
   });
 }

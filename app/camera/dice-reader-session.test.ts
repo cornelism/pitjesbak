@@ -40,6 +40,28 @@ function sessionOptions() {
 }
 
 describe("dice reader session lifecycle", () => {
+  it("confirms refined native readings and publishes the crop batch without another video capture", async () => {
+    const options = { ...sessionOptions(), expectedCount: 1, onCrops: vi.fn() };
+    Object.defineProperties(options.video, { videoWidth: { value: 1920 }, videoHeight: { value: 1080 } });
+    vi.mocked(HTMLCanvasElement.prototype.getContext).mockReturnValue({
+      drawImage: vi.fn(), clearRect: vi.fn(), strokeRect: vi.fn(), fillRect: vi.fn(), fillText: vi.fn(),
+      getImageData: (_x: number, _y: number, width: number, height: number) => ({ width, height, data: new Uint8ClampedArray(width * height * 4), colorSpace: "srgb" }),
+    } as unknown as CanvasRenderingContext2D);
+    vi.mocked(detectDiceOpenCv).mockImplementation((_cv, image) => image.width === 640
+      ? [{ value: 4, x: 200, y: 100, width: 40, height: 30 }]
+      : [{ value: 6, x: 120, y: 120, width: 120, height: 90 }]);
+    const stop = startDiceReader(options);
+    await vi.advanceTimersByTimeAsync(1280);
+    expect(options.onRoll).toHaveBeenCalledExactlyOnceWith([6]);
+    expect(options.onCrops).toHaveBeenLastCalledWith(expect.objectContaining({
+      sourceSize: { width: 1920, height: 1080 },
+      crops: [expect.objectContaining({ overviewValue: 4, cropValue: 6, used: true })],
+    }));
+    stop();
+    expect(options.onCrops).toHaveBeenLastCalledWith(null);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it("waits for a usable video frame without creating extra timers", async () => {
     const options = sessionOptions();
     Object.defineProperty(options.video, "readyState", { value: 0 });

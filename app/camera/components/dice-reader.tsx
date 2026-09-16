@@ -5,6 +5,7 @@ import { useDiceReader } from "../use-dice-reader";
 import CameraAngleControl from "../angle-guide/camera-angle-control";
 import DiceRemovedIndicator from "../removal/dice-removed-indicator";
 import PlayAreaOverlay from "../play-area/play-area-overlay";
+import type { DieCropBatch } from "../die-crops/types";
 
 interface DiceReaderProps {
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -12,9 +13,10 @@ interface DiceReaderProps {
   zoomRevision?: number;
   onDiceRemoved?: () => void;
   showPlayArea?: boolean;
+  onCrops?: (batch: DieCropBatch | null) => void;
 }
 
-export default function DiceReader({ videoRef, zoom = 1, zoomRevision = 0, onDiceRemoved, showPlayArea = false }: DiceReaderProps) {
+export default function DiceReader({ videoRef, zoom = 1, zoomRevision = 0, onDiceRemoved, showPlayArea = false, onCrops }: DiceReaderProps) {
   const {
     overlayRef,
     expectedCount,
@@ -25,7 +27,7 @@ export default function DiceReader({ videoRef, zoom = 1, zoomRevision = 0, onDic
     playArea,
     changeCameraTilt,
     changeExpectedCount,
-  } = useDiceReader(videoRef, zoom, zoomRevision, onDiceRemoved);
+  } = useDiceReader(videoRef, zoom, zoomRevision, onDiceRemoved, onCrops);
 
   return (
     <div className="pointer-events-none absolute inset-0">

@@ -2,11 +2,13 @@
 
 import { Camera, CameraOff } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import DiceReader from "./dice-reader";
 import SaveCameraFrame from "./save-camera-frame";
 import { useCamera } from "../capture/use-camera";
 import PlayAreaToggle from "../play-area/play-area-toggle";
+import SaveDieCrops from "../die-crops/save-die-crops";
+import type { DieCropBatch } from "../die-crops/types";
 
 export default function CameraPreview() {
   const {
@@ -15,6 +17,7 @@ export default function CameraPreview() {
   } = useCamera();
   const [aspectRatio, setAspectRatio] = useState(16 / 9);
   const [showPlayArea, setShowPlayArea] = useState(false);
+  const cropBatchRef = useRef<DieCropBatch | null>(null);
   const isLive = state.status === "live";
   const isRequesting = state.status === "requesting";
 
@@ -44,7 +47,8 @@ export default function CameraPreview() {
           style={{ transform: `scale(${isLive ? cropZoom : 1})` }}
           className={`absolute inset-0 h-full w-full object-contain ${isLive ? "" : "invisible"}`}
         />
-        {isLive && <DiceReader videoRef={videoRef} zoom={cropZoom} zoomRevision={zoomRevision} onDiceRemoved={resetZoom} showPlayArea={showPlayArea} />}
+        {isLive && <DiceReader videoRef={videoRef} zoom={cropZoom} zoomRevision={zoomRevision} onDiceRemoved={resetZoom} showPlayArea={showPlayArea}
+          onCrops={process.env.NODE_ENV === "development" ? (batch) => { cropBatchRef.current = batch; } : undefined} />}
         {!isLive && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
             <CameraOff className="h-9 w-9 text-zinc-500" aria-hidden="true" />
@@ -59,6 +63,7 @@ export default function CameraPreview() {
       </div>
 
       <footer className="space-y-4 border-t border-white/10 p-5 sm:px-8">
+        {isLive && process.env.NODE_ENV === "development" && <SaveDieCrops batchRef={cropBatchRef} />}
         {isLive && (
           <div>
             <label className="flex flex-wrap items-center gap-3 text-sm text-zinc-200">

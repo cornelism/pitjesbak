@@ -1,8 +1,10 @@
 import type * as OpenCv from "@techstark/opencv-js";
 import type { DetectedDie, DieValue } from "./dice-types";
 import { cameraFrameSize } from "./capture/frame-size";
-import { drawCameraFrame } from "./capture/draw-camera-frame";
-import { detectDiceOpenCv } from "./detection/opencv-dice";
+import { detectDiceOpenCv, type DiceCandidate } from "./detection/opencv-dice";
+import { createCropFrameCapture } from "./die-crops/capture-frame";
+import { readDieCrops } from "./die-crops/read-die-crops";
+import type { DieCropBatch } from "./die-crops/types";
 import { loadOpenCv } from "./detection/opencv-runtime";
 import { createRollMotionTracker } from "./tracking/roll-motion";
 import { createRollTracker } from "./tracking/roll-tracker";
@@ -25,6 +27,7 @@ interface ReaderSession {
   onDiceRemoved?: () => void;
   onDiceVisible?: () => void;
   onPlayArea?: (area: PlayArea | null) => void;
+  onCrops?: (batch: DieCropBatch | null) => void;
 }
 
 /** Keep frame buffers, motion history, and frozen markers local to one session. */
@@ -36,6 +39,7 @@ function createFrameReader(cv: typeof OpenCv, session: ReaderSession) {
   const motion = createRollMotionTracker();
   const removal = createDiceRemovalTracker(session.onPlayArea);
   let displayedMarkers: readonly DetectedDie[] | null = null;
+  const capture = createCropFrameCapture();
 
   // Return false only when reading is unavailable and the loop must stop.
   return function readFrame(): boolean {
@@ -56,11 +60,14 @@ function createFrameReader(cv: typeof OpenCv, session: ReaderSession) {
     }
 
     // Removal checks the full field, including dice moved outside a digital crop.
-    drawCameraFrame(context, video);
-    const fullImage = context.getImageData(0, 0, width, height);
-    if (zoom > 1) drawCameraFrame(context, video, zoom);
-    const image = zoom > 1 ? context.getImageData(0, 0, width, height) : fullImage;
-    const dice = detectDiceOpenCv(cv, image, cameraTilt);
+    const { fullImage, image, sourceSize, readCrop, capturedAt } = capture(video, context, { width, height }, zoom);
+    let candidates: readonly DiceCandidate[] = [];
+    const overviewDice = detectDiceOpenCv(cv, image, cameraTilt, (found) => { candidates = found; });
+    const { dice, batch } = readDieCrops(cv, {
+      sourceSize, overviewSize: { width, height }, zoom, cameraTilt, expectedCount, capturedAt,
+      dice: overviewDice, candidates, readCrop,
+    });
+    session.onCrops?.(batch);
     const now = performance.now();
     if (dice.length) session.onDiceVisible?.();
     if (removal.update(fullImage, dice.length, now)) {
@@ -92,6 +99,7 @@ function createFrameReader(cv: typeof OpenCv, session: ReaderSession) {
 export function startDiceReader(session: ReaderSession): () => void {
   let active = true;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  session.onCrops?.(null);
 
   function schedule(readFrame: () => boolean) {
     timer = setTimeout(() => {
@@ -99,6 +107,7 @@ export function startDiceReader(session: ReaderSession): () => void {
       try {
         if (readFrame() && active) schedule(readFrame);
       } catch {
+        session.onCrops?.(null);
         session.onStatus("Dice reading failed. Stop and restart the camera to retry.");
       }
     }, FRAME_INTERVAL_MS);
@@ -119,5 +128,6 @@ export function startDiceReader(session: ReaderSession): () => void {
   return () => {
     active = false;
     clearTimeout(timer);
+    session.onCrops?.(null);
   };
 }
