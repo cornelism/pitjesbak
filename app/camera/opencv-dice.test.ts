@@ -58,6 +58,11 @@ const nearPipChainFrame = { width: nearPipChainPng.width, height: nearPipChainPn
 const rimPipPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/rim-pip-dice-3-3-3.png", import.meta.url)));
 const rimPipFrame = { width: rimPipPng.width, height: rimPipPng.height, data: new Uint8ClampedArray(rimPipPng.data) };
 
+const distancePng = PNG.sync.read(readFileSync(new URL("./__fixtures__/shaded-distance-dice-3-3-3.png", import.meta.url)));
+const distanceFrame = { width: distancePng.width, height: distancePng.height, data: new Uint8ClampedArray(distancePng.data) };
+const distanceLivePng = PNG.sync.read(readFileSync(new URL("./__fixtures__/shaded-distance-dice-3-3-3-live.png", import.meta.url)));
+const distanceLiveFrame = { width: distanceLivePng.width, height: distanceLivePng.height, data: new Uint8ClampedArray(distanceLivePng.data) };
+
 function cropNewRoll(x: number, y: number, width: number, height: number) {
   const data = new Uint8ClampedArray(width * height * 4);
   for (let row = 0; row < height; row++) {
@@ -113,6 +118,19 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it("reads the distant dice in a later live frame without duplicate detections", () => {
+    expect(detectDiceOpenCv(cv, distanceLiveFrame, 50).map((die) => die.value)).toEqual([3, 3, 3]);
+  });
+
+  it.each([45, 50, 55])("reads the dim distant dice in the captured 3, 3, 3 roll at %i degrees", (angle) => {
+    expect(detectDiceOpenCv(cv, distanceFrame, angle).map((die) => die.value)).toEqual([3, 3, 3]);
+  });
+
+  it.each([0.8, 1.15])("reads the distant-dice roll at exposure multiplier %s", (exposure) => {
+    const data = distanceFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...distanceFrame, data }, 50).map((die) => die.value)).toEqual([3, 3, 3]);
+  });
+
   it.each([45, 50, 55])("preserves the rim pip in the captured 3, 3, 3 roll at %i degrees", (angle) => {
     expect(detectDiceOpenCv(cv, rimPipFrame, angle).map((die) => die.value)).toEqual([3, 3, 3]);
   });

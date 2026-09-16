@@ -109,8 +109,12 @@ When angled-mode thresholding includes more than 30% of the image, the detector
 applies a gamma contrast curve (exponent 1.5) and recalculates the threshold.
 This suppresses table midtones that otherwise merge with the dice. If the table
 still dominates, another Otsu split uses only pixels above the previous threshold
-to separate bright dice from the lit table. This fallback keeps its threshold
-strict to prevent table patches from rejoining the faces. These changes affect
+to separate bright dice from the lit table, with a 5% allowance for narrow pip
+rims. In this case a second mask uses local Gaussian thresholding over an
+81-pixel neighborhood to recover dim dice under uneven lighting. Its brightness
+offset scales with the scene's bright threshold. Both masks use the same face
+and pip validation; local readings only fill regions without a global reading,
+so each die is counted once. These changes affect
 recognition only; the live preview and saved frames retain the original pixels.
 A single centered pip can occupy up to 20% of the thresholded face, accounting
 for large one-face dots and tighter outlines under bright light. Individual pips

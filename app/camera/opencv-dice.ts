@@ -31,8 +31,7 @@ export function detectDiceOpenCv(
     const source = own(cv.matFromArray(height, width, cv.CV_8UC4, data));
     const gray = own(new cv.Mat());
     const binary = own(new cv.Mat());
-    const contours = own(new cv.MatVector());
-    const hierarchy = own(new cv.Mat());
+    let local: OpenCv.Mat | null = null;
     cv.cvtColor(source, gray, cv.COLOR_RGBA2GRAY);
     cv.GaussianBlur(gray, gray, new cv.Size(3, 3), 0);
     const threshold = cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
@@ -55,8 +54,35 @@ export function detectDiceOpenCv(
         const foregroundMask = own(new cv.Mat());
         const bright = cv.threshold(foreground, foregroundMask, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
         cv.threshold(gray, binary, bright * 0.95, 255, cv.THRESH_BINARY);
+        // Recover dim dice against their local surroundings. Scale the offset
+        // with scene brightness so exposure changes do not erase small rims.
+        local = own(new cv.Mat());
+        cv.adaptiveThreshold(gray, local, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C,
+          cv.THRESH_BINARY, 81, -bright * 0.05);
       }
     }
+    const detected = readDiceMask(cv, binary, cameraTilt);
+    if (local) {
+      // Keep established readings and add only independently validated dice in
+      // previously unread regions. A second mask must not duplicate a die.
+      for (const die of readDiceMask(cv, local, cameraTilt)) {
+        if (!detected.some((other) => die.x < other.x + other.width
+          && die.x + die.width > other.x && die.y < other.y + other.height
+          && die.y + die.height > other.y)) detected.push(die);
+      }
+    }
+    return detected.sort((a, b) => a.x - b.x || a.y - b.y);
+  } finally {
+    // OpenCV allocates WASM memory outside the JS garbage collector.
+    for (const object of owned.reverse()) object.delete();
+  }
+}
+
+function readDiceMask(cv: typeof OpenCv, binary: OpenCv.Mat, cameraTilt: number): DetectedDie[] {
+  const width = binary.cols, height = binary.rows;
+  const contours = new cv.MatVector();
+  const hierarchy = new cv.Mat();
+  try {
     separateDice(cv, binary);
     cv.findContours(binary, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_NONE);
     const detected: DetectedDie[] = [];
@@ -152,9 +178,9 @@ export function detectDiceOpenCv(
         contour.delete();
       }
     }
-    return detected.sort((a, b) => a.x - b.x || a.y - b.y);
+    return detected;
   } finally {
-    // OpenCV allocates WASM memory outside the JS garbage collector.
-    for (const object of owned.reverse()) object.delete();
+    hierarchy.delete();
+    contours.delete();
   }
 }

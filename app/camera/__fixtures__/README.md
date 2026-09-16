@@ -1,5 +1,16 @@
 # Real camera fixtures
 
+## shaded-distance-dice-3-3-3*.png
+
+- Captured on 2026-09-16 directly from the browser video with **Save camera frame**.
+- Unannotated 640 × 360 pixels, digital zoom **1×**, angle control **50°**.
+- Manually read top faces from left to right: **3, 3, 3** (total **9**).
+- The back dice are dimmer than the front die. Global thresholding fragments
+  the left face and loses a pip on the right, leaving only the front three.
+- Local Gaussian thresholding recovers the dim dice. Both masks use the same
+  face and pip validation; overlapping detections retain the global reading.
+- Tests cover 45°, 50°, and 55°, exposure changes, and a later `-live` frame.
+
 ## rim-pip-dice-3-3-3.png
 
 - Captured on 2026-09-16 directly from the browser video with **Save camera frame**.
