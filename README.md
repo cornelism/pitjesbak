@@ -140,6 +140,14 @@ around a pip near the face edge. The retry must match the same face,
 resolve additional separate pips, and pass the existing layout checks. It cannot
 replace an accepted reading or add detections outside those unresolved faces.
 
+Faces up to 40 × 40 pixels also receive a small-face retry, since smoothing can
+turn a four into a plausible pair or merge a three into a single mark. This pass
+uses gentler smoothing and a lower threshold to retain thin light rims. It must
+match a previously located face, isolate its complete top without visible sides,
+and validate every selected pip. It may replace an accepted count only when it
+recovers additional pips. The minimum contour area scales with the camera tilt;
+contours below the original 225-pixel floor are deferred to this detail pass.
+
 Before selecting faces, the detector checks indented outlines for narrow
 connections between nearby dice. It opens a filled copy of the outline (shrinks
 then expands it) and applies the cut only if multiple substantial pieces remain
@@ -163,7 +171,10 @@ to force a match: this prevents cutting a six down to a four.
 For calibrated views, layouts with three or more pips allow a pixel of uncertainty
 in both the outline and pip centers (two pixels combined). This allowance scales
 with the face size; spacing, shape, and pip-count checks remain unchanged. One-
-and two-pip faces retain the original center limits.
+and two-pip faces retain the original center limits in the standard pass.
+The small-face retry extends the center allowance to pairs and accounts for a
+pixel at each endpoint when checking spread. It includes boundary pixels' half-cell
+extent in the projection; single-pip centering and pattern shapes stay strict.
 
 For a complete four-, five-, or six-pip face, pattern validation normalizes scale
 and shear rather than relying on sharp corners in the rounded die outline. The

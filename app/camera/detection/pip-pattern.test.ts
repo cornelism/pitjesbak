@@ -47,6 +47,31 @@ describe("readPipPattern", () => {
     expect(readPipPattern(points, [1 / 32, 1 / 24])).toBeNull();
   });
 
+  it("allows a two's pixel-scale offset only during the small-face retry", () => {
+    const points: Point[] = [[0.3, 0.28], [0.7, 0.28]];
+    expect(readPipPattern(points, [1 / 30, 1 / 21])).toBeNull();
+    expect(readPipPattern(points, [1 / 30, 1 / 21], true)).toBe(2);
+    expect(readPipPattern(points, [1 / 120, 1 / 84], true)).toBeNull();
+  });
+
+  it("accounts for pixel uncertainty at both ends of a small three", () => {
+    const points: Point[] = [[0.5, 0.33], [0.5, 0.5], [0.5, 0.67]];
+    expect(readPipPattern(points, [1 / 30, 1 / 21])).toBeNull();
+    expect(readPipPattern(points, [1 / 30, 1 / 21], true)).toBe(3);
+    expect(readPipPattern(points, [1 / 120, 1 / 84], true)).toBeNull();
+  });
+
+  it.each<{ name: string; points: Point[] }>([
+    { name: "off-center single", points: [[0.5, 0.3]] },
+    { name: "off-center pair", points: [[0.3, 0.15], [0.7, 0.15]] },
+    { name: "compact pair", points: [[0.45, 0.5], [0.55, 0.5]] },
+    { name: "compact three", points: [[0.4, 0.5], [0.5, 0.5], [0.6, 0.5]] },
+    { name: "triangle", points: [[0.3, 0.3], [0.7, 0.3], [0.5, 0.7]] },
+    { name: "uneven three", points: [[0.5, 0.2], [0.5, 0.3], [0.5, 0.7]] },
+  ])("rejects $name during the small-face retry", ({ points }) => {
+    expect(readPipPattern(points, [1 / 30, 1 / 21], true)).toBeNull();
+  });
+
   it("reads a compact two-pip face regardless of rotation", () => {
     for (const angle of [0, 0.4, Math.PI / 4, 1.2]) {
       const points = normalizedFace(2, angle).map(([x, y]): Point => [

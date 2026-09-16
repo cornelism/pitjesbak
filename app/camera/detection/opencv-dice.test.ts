@@ -53,6 +53,8 @@ const wideSixFrame = loadCameraFrame("wide-dice-6-5-1.png");
 
 const shadowFrame = loadCameraFrame("shadow-dice-2-4-1.png");
 
+const distantRollFrame = loadCameraFrame("distant-dice-4-3-2.png");
+
 const wideTableFrame = loadCameraFrame("wide-table-dice-3-6-4.png");
 
 const dimThreeFrame = loadCameraFrame("dim-dice-3-4-4.png");
@@ -116,6 +118,28 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it.each([45, 50])("reads the distant 4, 3, 2 roll at %i degrees", (angle) => {
+    expect(detectDiceOpenCv(cv, distantRollFrame, angle).map((die) => die.value)).toEqual([4, 3, 2]);
+  });
+
+  it.each([0.8, 1.15])("reads the distant 4, 3, 2 roll at exposure multiplier %s", (exposure) => {
+    const data = distantRollFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...distantRollFrame, data }, 45).map((die) => die.value)).toEqual([4, 3, 2]);
+  });
+
+  it.each([45, 50])("does not infer the distant three when its middle pip is absent at %i degrees", (angle) => {
+    const data = new Uint8ClampedArray(distantRollFrame.data);
+    const color = data.slice((89 * distantRollFrame.width + 303) * 4, (89 * distantRollFrame.width + 303) * 4 + 4);
+    for (let y = 86; y <= 90; y++) {
+      for (let x = 297; x <= 300; x++) {
+        if (Math.hypot(x - 298.5, y - 88.3) <= 1.8) {
+          data.set(color, (y * distantRollFrame.width + x) * 4);
+        }
+      }
+    }
+    expect(detectDiceOpenCv(cv, { ...distantRollFrame, data }, angle).map((die) => die.value)).toEqual([4, 2, 2]);
+  });
+
   it.each([45, 50])("reads the wide-table 3, 6, 4 roll at %i degrees", (angle) => {
     expect(detectDiceOpenCv(cv, wideTableFrame, angle).map((die) => die.value)).toEqual([3, 6, 4]);
   });

@@ -13,7 +13,7 @@ export function createDiceMasks(
   frame: Pick<ImageData, "data" | "width" | "height">,
   cameraTilt: number,
   own: OwnCvResource,
-  smoothing: "standard" | "gentle" = "standard",
+  profile: "standard" | "gentle" | "small" = "standard",
 ): { binary: OpenCv.Mat; local: OpenCv.Mat | null } {
   const { width, height, data } = frame;
   const source = own(cv.matFromArray(height, width, cv.CV_8UC4, data));
@@ -23,18 +23,22 @@ export function createDiceMasks(
   cv.cvtColor(source, gray, cv.COLOR_RGBA2GRAY);
   // Gentle smoothing preserves thin light gaps between distant pips when a
   // candidate could not be read with the standard noise suppression.
-  cv.GaussianBlur(gray, gray, new cv.Size(3, 3), smoothing === "gentle" ? 0.5 : 0);
+  cv.GaussianBlur(gray, gray, new cv.Size(3, 3), profile === "standard" ? 0 : 0.5);
+  // Small faces need a wider light rim as well as gentler smoothing. These
+  // masks are only consulted for previously located, low-resolution faces.
+  const rimRatio = profile === "small" ? 0.6 : 0.75;
+  const brightRimRatio = profile === "small" ? 0.6 : 0.95;
   const threshold = cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
   // Preserve narrow light rims around small, foreshortened pips. At the
   // unadjusted Otsu threshold those holes can merge with the background.
-  if (cameraTilt > 0) cv.threshold(gray, binary, threshold * 0.75, 255, cv.THRESH_BINARY);
+  if (cameraTilt > 0) cv.threshold(gray, binary, threshold * rimRatio, 255, cv.THRESH_BINARY);
   if (cameraTilt > 0 && cv.countNonZero(binary) > width * height * 0.3) {
     // A bright table can dominate Otsu's foreground class. Suppress midtones
     // before recomputing the split, leaving already-separated dice untouched.
     const curve = own(cv.matFromArray(1, 256, cv.CV_8UC1, CONTRAST_CURVE));
     cv.LUT(gray, curve, gray);
     const adjusted = cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
-    cv.threshold(gray, binary, adjusted * 0.75, 255, cv.THRESH_BINARY);
+    cv.threshold(gray, binary, adjusted * rimRatio, 255, cv.THRESH_BINARY);
     if (cv.countNonZero(binary) > width * height * 0.3) {
       // If the table still dominates, split the brighter population again.
       // Keep the correction small: preserve thin rims around edge pips
@@ -43,7 +47,7 @@ export function createDiceMasks(
       const foreground = own(cv.matFromArray(1, values.length, cv.CV_8UC1, values));
       const foregroundMask = own(new cv.Mat());
       let bright = cv.threshold(foreground, foregroundMask, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
-      cv.threshold(gray, binary, bright * 0.95, 255, cv.THRESH_BINARY);
+      cv.threshold(gray, binary, bright * brightRimRatio, 255, cv.THRESH_BINARY);
       // Several lit table regions can occupy successive brightness bands.
       // Continue splitting while the foreground is still table-sized.
       for (let pass = 0; pass < 3 && cv.countNonZero(binary) > width * height * 0.3; pass++) {
@@ -53,7 +57,7 @@ export function createDiceMasks(
         const next = cv.threshold(brighter, foregroundMask, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
         if (next <= bright) break;
         bright = next;
-        cv.threshold(gray, binary, bright * 0.95, 255, cv.THRESH_BINARY);
+        cv.threshold(gray, binary, bright * brightRimRatio, 255, cv.THRESH_BINARY);
       }
       // Recover dim dice against their local surroundings. Scale the offset
       // with scene brightness so exposure changes do not erase small rims.

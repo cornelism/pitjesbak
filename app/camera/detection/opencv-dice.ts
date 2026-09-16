@@ -29,20 +29,20 @@ export function detectDiceOpenCv(
   if (!width || !height || data.length !== width * height * 4 || !Number.isFinite(cameraTilt)) return [];
   return withCvResources((own) => {
     const { binary, local } = createDiceMasks(cv, frame, cameraTilt, own);
-    const unread: (FaceBounds & { pipCount: number })[] = [];
-    const recordUnread = (bounds: FaceBounds, pipCount: number) => {
-      unread.push({ ...bounds, pipCount });
+    const candidates: (FaceBounds & { pipCount: number; small: boolean })[] = [];
+    const recordCandidate = (bounds: FaceBounds, pipCount: number, small = false) => {
+      candidates.push({ ...bounds, pipCount, small });
     };
-    const detected = readDiceMask(cv, binary, cameraTilt, recordUnread);
+    const detected = readDiceMask(cv, binary, cameraTilt, recordCandidate);
     function addReadings(readings: DetectedDie[]) {
       for (const die of readings) {
         if (!detected.some((other) => overlaps(die, other))) detected.push(die);
       }
     }
     // A second mask fills unread regions without replacing established values.
-    if (local) addReadings(readDiceMask(cv, local, cameraTilt, recordUnread));
+    if (local) addReadings(readDiceMask(cv, local, cameraTilt, recordCandidate));
 
-    const unresolved = unread.filter((bounds) => !detected.some((die) => overlaps(bounds, die)));
+    const unresolved = candidates.filter((bounds) => !detected.some((die) => overlaps(bounds, die)));
     if (unresolved.length) {
       const detail = createDiceMasks(cv, frame, cameraTilt, own, "gentle");
       for (const mask of [detail.binary, detail.local]) {
@@ -53,6 +53,23 @@ export function detectDiceOpenCv(
         addReadings(readings.filter((die) => unresolved.some((bounds) =>
           die.value > bounds.pipCount && sameFace(bounds, die),
         )));
+      }
+    }
+    // Small contours can yield a plausible partial count even when the first
+    // pass succeeds. Only a complete top with additional measured pips may
+    // replace that count; never add a new region or choose a smaller subset.
+    const smallCandidates = candidates.filter((candidate) => candidate.small);
+    if (smallCandidates.length) {
+      const detail = createDiceMasks(cv, frame, cameraTilt, own, "small");
+      for (const mask of [detail.binary, detail.local]) {
+        if (!mask) continue;
+        const readings = readDiceMask(cv, mask, cameraTilt, undefined, true);
+        for (const die of readings) {
+          if (die.value < 2 || !smallCandidates.some((bounds) => die.value >= bounds.pipCount && sameFace(bounds, die))) continue;
+          const existing = detected.findIndex((other) => overlaps(die, other));
+          if (existing === -1) detected.push(die);
+          else if (sameFace(detected[existing], die) && die.value > detected[existing].value) detected[existing] = die;
+        }
       }
     }
     return detected.sort((a, b) => a.x - b.x || a.y - b.y);

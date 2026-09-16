@@ -1,5 +1,23 @@
 # Real camera fixtures
 
+## distant-dice-4-3-2.png
+
+- User-provided raw camera frame `dice-camera-frame (41).png`, saved unchanged
+  at 640 × 360 pixels on 2026-09-16.
+- Manually read top faces from left to right: **4, 3, 2** (total **9**).
+- The distant four and three fall below the original fixed contour-area cutoff.
+  Standard smoothing also loses rim pips and merges adjacent holes, producing
+  plausible partial counts. The area floor now accounts for the camera tilt;
+  small candidates receive gentler smoothing and a lower threshold to preserve
+  their light rims. A complete top and a valid full pattern must support any
+  recovered count, and replacing an accepted value requires additional pips.
+- The small-face retry includes boundary pixels' half-cell extent and allows
+  pixel-scale uncertainty in centering and separation. It never relaxes the
+  single-pip center check or uses side-face fallbacks.
+- Tests cover 45°/50°, exposure multipliers 0.8/1.15, and removal of the
+  three's middle pip: the remaining pair must read two, never an inferred three.
+- Angles are test settings, not a measured physical camera angle.
+
 ## wide-table-dice-3-6-4.png
 
 - User-provided raw camera frame `dice-camera-frame (40).png`, saved unchanged
@@ -12,7 +30,7 @@
   outline and pip centers under the calibrated projection (two pixels combined),
   while retaining spacing and shape checks. Exposure can move the outline by
   an extra pixel in this frame.
-  Single-pip and two-pip readings keep their original position limits.
+  The standard pass keeps the original single-pip and two-pip position limits.
 - Tests cover 45° and 50° and exposure multipliers 0.8/1.15. Pattern tests cover
   resolution scaling and rejection of off-center or invalid arrangements.
 - Angles are test settings, not a measured physical camera angle.

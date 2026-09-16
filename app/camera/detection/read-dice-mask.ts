@@ -7,7 +7,8 @@ import { readDieValue } from "./read-die-value";
 
 export function readDiceMask(
   cv: typeof OpenCv, binary: OpenCv.Mat, cameraTilt: number,
-  onIncompleteFace?: (bounds: FaceBounds, pipCount: number) => void,
+  onCandidate?: (bounds: FaceBounds, pipCount: number, small?: boolean) => void,
+  smallFaces = false,
 ): DetectedDie[] {
   const width = binary.cols, height = binary.rows;
   const contours = new cv.MatVector();
@@ -17,6 +18,8 @@ export function readDiceMask(
     cv.findContours(binary, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_NONE);
     const detected: DetectedDie[] = [];
     const tilt = Math.max(0, Math.min(60, cameraTilt)) * Math.PI / 180;
+    // A top face loses projected area when viewed at an angle.
+    const minimumArea = 225 * Math.cos(tilt);
 
     for (let i = 0; i < contours.size(); i++) {
       if (hierarchy.data32S[i * 4 + 3] !== -1) continue;
@@ -25,7 +28,7 @@ export function readDiceMask(
         const bounds = cv.boundingRect(contour);
         const area = cv.contourArea(contour);
         const { x, y, width: w, height: h } = bounds;
-        if (area < 225 || area > width * height * 0.3 || w / h < 0.45 || w / h > 1.8 || area / (w * h) < 0.38) continue;
+        if (area < minimumArea || area > width * height * 0.3 || w / h < 0.45 || w / h > 1.8 || area / (w * h) < 0.38) continue;
         // An upright cube projects to at most sqrt(2) times its width in
         // height. Allow rounded/noisy edges, but reject long shadow fragments.
         if (h > w * 1.6) continue;
@@ -37,13 +40,20 @@ export function readDiceMask(
           const face = projectTopFace(silhouette, bounds, tilt);
           if (!face) continue;
           const pips = measurePips(cv, contours, hierarchy, hierarchy.data32S[i * 4 + 2], bounds, area);
-          const value = readDieValue(pips, face, bounds, area, tilt);
+          // Tiny contours need the detail pass: smoothing can hide half a
+          // four or merge a three into a plausible single pip.
+          if (area < 225 && !smallFaces) {
+            if (pips.length) onCandidate?.(bounds, pips.length, true);
+            continue;
+          }
+          const value = readDieValue(pips, face, bounds, area, tilt, smallFaces);
           if (value) detected.push({ value, x, y, width: w, height: h });
-          // Smoothing can join adjacent pips or open a thin rim to the
-          // background. Require multiple enclosed pips before a detail retry;
-          // the caller accepts it only if additional pips form a valid face.
-          else if (pips.length >= 2) {
-            onIncompleteFace?.(bounds, pips.length);
+          // At low resolution even a valid count may have merged or missing
+          // pips. Larger faces only need a retry when several pips went unread.
+          if (!smallFaces && w <= 40 && h <= 40 && pips.length) {
+            onCandidate?.(bounds, pips.length, true);
+          } else if (!value && pips.length >= 2) {
+            onCandidate?.(bounds, pips.length);
           }
         } finally {
           silhouette.delete();

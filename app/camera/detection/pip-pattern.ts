@@ -16,25 +16,25 @@ function signature(points: readonly Point[]) {
   return { distances: distances.map((distance) => distance / span), span };
 }
 
-export function readPipPattern(points: readonly Point[], pixelSize: Point = [0, 0]): DieValue | null {
+export function readPipPattern(points: readonly Point[], pixelSize: Point = [0, 0], smallFace = false): DieValue | null {
   const count = points.length;
   if (count !== 1 && count !== 2 && count !== 3 && count !== 4 && count !== 5 && count !== 6) return null;
   if (points.some(([x, y]) => !Number.isFinite(x) || !Number.isFinite(y) || x <= 0 || x >= 1 || y <= 0 || y >= 1)) return null;
   const cx = points.reduce((sum, point) => sum + point[0], 0) / count;
   const cy = points.reduce((sum, point) => sum + point[1], 0) / count;
   // Thresholding can move both the outline and pip center by a pixel.
-  // Allow their combined uncertainty only for layouts with at least three
-  // measured pips; spacing and shape must still pass the checks below.
-  const dx = Math.max(0, Math.abs(cx - 0.5) - (count >= 3 ? 2 * pixelSize[0] : 0));
-  const dy = Math.max(0, Math.abs(cy - 0.5) - (count >= 3 ? 2 * pixelSize[1] : 0));
+  // Allow their combined uncertainty only for multiple measured pips;
+  // spacing and shape must still pass the checks below.
+  const centerAllowance = count >= 3 || (smallFace && count === 2) ? 2 : 0;
+  const dx = Math.max(0, Math.abs(cx - 0.5) - centerAllowance * pixelSize[0]);
+  const dy = Math.max(0, Math.abs(cy - 0.5) - centerAllowance * pixelSize[1]);
   if (Math.hypot(dx, dy) > 0.18) return null;
   if (count > 1) {
     const actual = signature(points);
     const expected = patternSignatures[count - 1];
-    // Two-pip faces can have more inset dots: the captured 1–2–4 roll has
-    // a normalized separation of 0.37. Keep a lower bound to reject tiny pairs,
-    // without relaxing the required spread of faces with three or more pips.
-    const minimumSpan = count === 2 ? 0.35 : 0.4;
+    // Pairs can have more inset dots. For small faces, allow one pixel at
+    // each endpoint when measuring spread; shape validation stays unchanged.
+    const minimumSpan = (count === 2 ? 0.35 : 0.4) - (smallFace ? 2 * Math.hypot(...pixelSize) : 0);
     if (actual.span < minimumSpan || actual.span > 1.1) return null;
     if (actual.distances.some((distance, i) => Math.abs(distance - expected.distances[i]) > 0.12)) return null;
   }
@@ -61,7 +61,7 @@ function affineSignature(points: readonly Point[]): number[] | null {
 /** Match a complete face whose dark sides vanished during thresholding.
  * Use every enclosed pip; do not select a convenient subset or infer missing dots.
  */
-export function readWholeFacePattern(pips: readonly Pip[], width: number, height: number): DieValue | null {
+export function readWholeFacePattern(pips: readonly Pip[], width: number, height: number, centerMargin = 0): DieValue | null {
   const count = pips.length;
   if (count !== 4 && count !== 5 && count !== 6) return null;
   if (!hasConsistentPipSizes(pips) || width <= 0 || height <= 0) return null;
@@ -71,7 +71,9 @@ export function readWholeFacePattern(pips: readonly Pip[], width: number, height
   const xs = points.map(([x]) => x), ys = points.map(([, y]) => y);
   const cx = xs.reduce((sum, x) => sum + x, 0) / count / width;
   const cy = ys.reduce((sum, y) => sum + y, 0) / count / height;
-  if (Math.hypot(cx - 0.5, cy - 0.5) > 0.18) return null;
+  const dx = Math.max(0, Math.abs(cx - 0.5) - centerMargin / width);
+  const dy = Math.max(0, Math.abs(cy - 0.5) - centerMargin / height);
+  if (Math.hypot(dx, dy) > 0.18) return null;
   const spanX = (Math.max(...xs) - Math.min(...xs)) / width;
   const spanY = (Math.max(...ys) - Math.min(...ys)) / height;
   if (spanX < 0.3 || spanX > 0.85 || spanY < 0.2 || spanY > 0.85) return null;
