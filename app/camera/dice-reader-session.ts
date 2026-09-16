@@ -14,6 +14,7 @@ import { unzoomDice } from "./capture/frame-coordinates";
 import type { PlayArea } from "./play-area/play-area";
 
 const FRAME_INTERVAL_MS = 160;
+const MIN_FRAME_PAUSE_MS = 16;
 
 interface ReaderSession {
   video: HTMLVideoElement;
@@ -101,16 +102,22 @@ export function startDiceReader(session: ReaderSession): () => void {
   let timer: ReturnType<typeof setTimeout> | undefined;
   session.onCrops?.(null);
 
-  function schedule(readFrame: () => boolean) {
+  function schedule(readFrame: () => boolean, delay = FRAME_INTERVAL_MS) {
     timer = setTimeout(() => {
       if (!active) return;
+      const startedAt = performance.now();
       try {
-        if (readFrame() && active) schedule(readFrame);
+        if (readFrame() && active) {
+          // Processing belongs to the sampling interval. Always yield after
+          // slow frames, without queuing catch-up readings of the same frame.
+          const elapsed = performance.now() - startedAt;
+          schedule(readFrame, Math.max(MIN_FRAME_PAUSE_MS, FRAME_INTERVAL_MS - elapsed));
+        }
       } catch {
         session.onCrops?.(null);
         session.onStatus("Dice reading failed. Stop and restart the camera to retry.");
       }
-    }, FRAME_INTERVAL_MS);
+    }, delay);
   }
 
   loadOpenCv()

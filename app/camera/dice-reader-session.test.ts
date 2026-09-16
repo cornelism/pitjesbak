@@ -40,6 +40,34 @@ function sessionOptions() {
 }
 
 describe("dice reader session lifecycle", () => {
+  it.each([
+    { processingMs: 40, delayMs: 120 },
+    { processingMs: 80, delayMs: 80 },
+    { processingMs: 250, delayMs: 16 },
+  ])("counts $processingMs ms of processing toward the sampling interval", async ({ processingMs, delayMs }) => {
+    const options = sessionOptions();
+    const now = vi.spyOn(performance, "now").mockReturnValue(0);
+    const timeout = vi.spyOn(globalThis, "setTimeout");
+    vi.mocked(detectDiceOpenCv).mockImplementation(() => {
+      now.mockReturnValue(processingMs);
+      return [];
+    });
+    const stop = startDiceReader(options);
+    try {
+      await vi.advanceTimersByTimeAsync(160);
+      expect(detectDiceOpenCv).toHaveBeenCalledOnce();
+      expect(timeout).toHaveBeenLastCalledWith(expect.any(Function), delayMs);
+      // Even an over-budget frame yields before the next reading; no backlog.
+      expect(vi.getTimerCount()).toBe(1);
+      stop();
+      expect(vi.getTimerCount()).toBe(0);
+    } finally {
+      stop();
+      timeout.mockRestore();
+      now.mockRestore();
+    }
+  });
+
   it("confirms refined native readings and publishes the crop batch without another video capture", async () => {
     const options = { ...sessionOptions(), expectedCount: 1, onCrops: vi.fn() };
     Object.defineProperties(options.video, { videoWidth: { value: 1920 }, videoHeight: { value: 1080 } });
