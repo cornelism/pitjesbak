@@ -6,6 +6,7 @@ import { useState } from "react";
 import DiceReader from "./dice-reader";
 import SaveCameraFrame from "./save-camera-frame";
 import { useCamera } from "../capture/use-camera";
+import PlayAreaToggle from "../play-area/play-area-toggle";
 
 export default function CameraPreview() {
   const {
@@ -13,6 +14,7 @@ export default function CameraPreview() {
     startCamera, stopCamera, changeZoom, resetZoom,
   } = useCamera();
   const [aspectRatio, setAspectRatio] = useState(16 / 9);
+  const [showPlayArea, setShowPlayArea] = useState(false);
   const isLive = state.status === "live";
   const isRequesting = state.status === "requesting";
 
@@ -42,7 +44,7 @@ export default function CameraPreview() {
           style={{ transform: `scale(${isLive ? cropZoom : 1})` }}
           className={`absolute inset-0 h-full w-full object-contain ${isLive ? "" : "invisible"}`}
         />
-        {isLive && <DiceReader videoRef={videoRef} zoom={cropZoom} zoomRevision={zoomRevision} onDiceRemoved={resetZoom} />}
+        {isLive && <DiceReader videoRef={videoRef} zoom={cropZoom} zoomRevision={zoomRevision} onDiceRemoved={resetZoom} showPlayArea={showPlayArea} />}
         {!isLive && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
             <CameraOff className="h-9 w-9 text-zinc-500" aria-hidden="true" />
@@ -74,6 +76,7 @@ export default function CameraPreview() {
               />
             </label>
             {zoomError && <p role="alert" className="mt-2 text-sm text-amber-300">{zoomError}</p>}
+            <div className="mt-3"><PlayAreaToggle checked={showPlayArea} onChange={setShowPlayArea} /></div>
           </div>
         )}
         <p className="text-sm text-zinc-400">

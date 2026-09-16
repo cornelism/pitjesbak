@@ -1,9 +1,10 @@
 import type { DetectedDie } from "../dice-types";
+import { detectSurface } from "../play-area/surface-mask";
+import { createPlayArea, type PlayArea } from "../play-area/play-area";
 
 export type CameraFrame = Pick<ImageData, "data" | "width" | "height">;
 type Color = readonly [number, number, number];
 interface Sample { x: number; y: number; color: Color }
-interface TableRegion { table: Color | null; bounds: DetectedDie }
 
 function colorAt(frame: CameraFrame, x: number, y: number): Color {
   const i = (y * frame.width + x) * 4;
@@ -27,38 +28,10 @@ function matches(actual: Color, expected: Color, shift: Color) {
   return actual.every((value, channel) => Math.abs(value - expected[channel] - shift[channel]) <= 32);
 }
 
-/** Follow felt-colored samples from the dice; a dark rim separates the desk.
- * Color alone would also include similarly colored objects beyond the tray.
- */
-function connectedTable(background: readonly Sample[], regions: readonly TableRegion[], width: number): Sample[] {
-  const eligible = new Map(background.filter(({ color }) => regions.some(({ table }) =>
-    table && matches(color, table, [0, 0, 0]),
-  )).map((sample) => [sample.y * width + sample.x, sample]));
-  const queue: Sample[] = [];
-  function add(key: number) {
-    const sample = eligible.get(key);
-    if (sample) { queue.push(sample); eligible.delete(key); }
-  }
-  for (const sample of background) {
-    if (regions.some(({ bounds }) => sample.x >= bounds.x - bounds.width * 0.6
-      && sample.x <= bounds.x + bounds.width * 1.6 && sample.y >= bounds.y - bounds.height * 0.6
-      && sample.y <= bounds.y + bounds.height * 1.6)) add(sample.y * width + sample.x);
-  }
-  for (let i = 0; i < queue.length; i++) {
-    const { x, y } = queue[i];
-    const key = y * width + x;
-    if (x >= 4) add(key - 4);
-    if (x + 4 < width) add(key + 4);
-    add(key - 4 * width);
-    add(key + 4 * width);
-  }
-  return queue;
-}
-
 /** Learn the visible table around confirmed dice, independently of pip reading.
  * Changed background patches veto a hand or an unread die moved elsewhere.
  */
-export function captureTable(frame: CameraFrame, dice: readonly DetectedDie[]) {
+export function captureTable(frame: CameraFrame, dice: readonly DetectedDie[], onPlayArea?: (area: PlayArea | null) => void) {
   const { width, height } = frame;
   const background: Sample[] = [];
   for (let y = 2; y < frame.height; y += 4) {
@@ -81,7 +54,10 @@ export function captureTable(frame: CameraFrame, dice: readonly DetectedDie[]) {
     }
     return { table, pixels, bounds: { ...die } };
   });
-  const surface = connectedTable(background, regions, width);
+  const area = detectSurface(background, regions, width, height);
+  const cells = new Set(area.map(({ x, y }) => y * width + x));
+  const surface = background.filter(({ x, y }) => cells.has(y * width + x));
+  if (onPlayArea) onPlayArea(createPlayArea(area, width, height));
   const exposureSamples = surface.filter((_, i) => i % Math.max(1, Math.floor(surface.length / 256)) === 0);
 
   return (current: CameraFrame): boolean => {

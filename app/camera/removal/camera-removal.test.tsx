@@ -40,9 +40,25 @@ it.each(["digital", "camera"])("confirms removal, keeps the badge and resets %s 
   vi.mocked(detectDiceOpenCv).mockImplementation(() => video.style.transform === "scale(2)" ? crop(readings) : readings);
   await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Start camera" })); });
   await act(async () => { fireEvent.change(screen.getByRole("slider", { name: "Camera zoom" }), { target: { value: mode === "digital" ? "2" : "4" } }); });
+  const toggle = screen.getByRole<HTMLInputElement>("checkbox", { name: "Show play area" });
+  expect(toggle.checked).toBe(false);
+  fireEvent.click(toggle);
+  expect(screen.getByText("Confirm a roll to locate the play area.")).toBeTruthy();
   const advance = async (ms: number) => { await act(async () => { await vi.advanceTimersByTimeAsync(ms); }); };
   await advance(1120);
   expect(screen.getByText("Roll confirmed")).toBeTruthy();
+  const surface = screen.getByRole("img", { name: "Detected play area" });
+  expect(surface.getAttribute("viewBox")).toBe("0 0 640 480");
+  expect(surface.style.transform).toBe(mode === "digital" ? "scale(2)" : "scale(1)");
+  expect(surface.querySelector("path")?.getAttribute("fill-opacity")).toBe("0.2");
+  const rollsBeforeToggle = log.mock.calls.length;
+  fireEvent.click(toggle);
+  expect(screen.queryByRole("img", { name: "Detected play area" })).toBeNull();
+  fireEvent.click(toggle);
+  expect(screen.getByRole("img", { name: "Detected play area" })).toBeTruthy();
+  expect(screen.getByText("Roll confirmed")).toBeTruthy();
+  expect(log.mock.calls.length).toBe(rollsBeforeToggle);
+  expect(vi.getTimerCount()).toBe(1);
 
   // A stationary hand is still an obstruction after recognition returns no pips.
   readings = [];
@@ -67,6 +83,8 @@ it.each(["digital", "camera"])("confirms removal, keeps the badge and resets %s 
   expect(badge.className).toContain("right-3 top-3");
   expect(screen.getByText(`Zoom: 1.0× (${mode})`)).toBeTruthy();
   expect(screen.getByText("Last roll: None yet")).toBeTruthy();
+  if (mode === "digital") expect(screen.getByRole("img", { name: "Detected play area" }).style.transform).toBe("scale(1)");
+  else expect(screen.queryByRole("img", { name: "Detected play area" })).toBeNull();
   if (mode === "camera") expect(applyConstraints).toHaveBeenLastCalledWith({ advanced: [{ zoom: 2 }] });
   expect(clearRect).toHaveBeenCalled();
   await advance(2500);

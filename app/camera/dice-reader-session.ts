@@ -9,6 +9,7 @@ import { createRollTracker } from "./tracking/roll-tracker";
 import { drawMarkers, readingStatus } from "./components/reader-display";
 import { createDiceRemovalTracker } from "./removal/dice-removal";
 import { unzoomDice } from "./capture/frame-coordinates";
+import type { PlayArea } from "./play-area/play-area";
 
 const FRAME_INTERVAL_MS = 160;
 
@@ -23,15 +24,17 @@ interface ReaderSession {
   onRoll: (roll: readonly DieValue[]) => void;
   onDiceRemoved?: () => void;
   onDiceVisible?: () => void;
+  onPlayArea?: (area: PlayArea | null) => void;
 }
 
 /** Keep frame buffers, motion history, and frozen markers local to one session. */
 function createFrameReader(cv: typeof OpenCv, session: ReaderSession) {
   const { video, overlay, expectedCount, cameraTilt, zoom, onStatus, onRoll } = session;
   const frame = document.createElement("canvas");
+  frame.width = frame.height = 0;
   let trackRoll = createRollTracker(expectedCount);
   const motion = createRollMotionTracker();
-  const removal = createDiceRemovalTracker();
+  const removal = createDiceRemovalTracker(session.onPlayArea);
   let displayedMarkers: readonly DetectedDie[] | null = null;
 
   // Return false only when reading is unavailable and the loop must stop.
@@ -40,6 +43,7 @@ function createFrameReader(cv: typeof OpenCv, session: ReaderSession) {
 
     const { width, height } = cameraFrameSize(video);
     if (frame.width !== width || frame.height !== height) {
+      if (frame.width) session.onPlayArea?.(null);
       frame.width = overlay.width = width;
       frame.height = overlay.height = height;
       displayedMarkers = null;

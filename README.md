@@ -86,6 +86,13 @@ logging. The captured real-camera fixtures read **3, 5, 3**, **6, 1, 5**, and
   back. It illustrates the selected setting, rather than measuring the table, and
   is excluded from detection and saved camera frames.
 - Green boxes label recognized dice; **Last roll** shows the last settled reading.
+- **Show play area**, below the zoom control, toggles a translucent blue overlay
+  of the detected table surface used by removal detection. It shows one continuous
+  area with a simplified outer outline; dice and shadows do not create holes.
+  Confirm a roll first
+  to locate it. The overlay follows digital zoom, stays clipped to the preview,
+  and never enters recognition or saved frames. Toggling it preserves the roll.
+  Hardware zoom invalidates the old surface until another roll is confirmed.
 
 Steady readings settle after 900 ms. If stationary values change or detections
 drop out, confirmation uses the last six attempts (about 0.8 seconds from the first
@@ -110,9 +117,11 @@ confirm absence on their own. A camera pause interrupts the timer.
 
 The separate removal feature compares camera pixels with the confirmed scene:
 the old dice positions must resemble the surrounding table, and other changed
-patches on the connected playing surface must clear. It follows table-colored
-pixels outward from the dice, so the tray rim separates the surface from the
-desk or player beyond it. Movement outside that surface does not block removal.
+patches on the connected playing surface must clear. Felt color is compared
+independently of moderate brightness changes, so similarly bright gray rails
+cannot join colored felt. Narrow bridges and isolated patches are removed before
+selecting the main connected surface and filling its interior holes. Movement
+outside that surface does not block removal.
 It accounts for moderate exposure changes and disappearing
 die shadows. Digital zoom uses the full camera field for this check, including
 areas outside the crop. This is a conservative scene comparison, not a trained
@@ -270,6 +279,9 @@ The camera and game are independent features. Shared UI primitives live in
 - `app/camera/removal`: clear-table pixel checks, the two-second all-dice absence
   timer, and the removal indicator. The reader session feeds it full camera frames;
   the camera capture hook handles the resulting zoom reset.
+- `app/camera/play-area`: surface segmentation, simplified boundary geometry, its transparent SVG overlay,
+  and the visibility checkbox. It displays the removal detector's calibrated
+  surface rather than estimating a separate region for the UI.
 - `app/camera/angle-guide`: angle control interactions, projected grid rendering,
   scoped animation styles, and tests. Its only inputs are the angle and a change
   callback; it has no dependency on camera capture, detection, or roll tracking.

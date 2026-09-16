@@ -1,12 +1,13 @@
 import type { DetectedDie } from "../dice-types";
 import { createRollMotionTracker } from "../tracking/roll-motion";
 import { captureTable, type CameraFrame } from "./clear-table";
+import type { PlayArea } from "../play-area/play-area";
 
 const ABSENCE_MS = 2000;
 const MAX_SAMPLE_GAP_MS = 750;
 
 /** One removal event per confirmed roll, after movement and a clear table. */
-export function createDiceRemovalTracker() {
+export function createDiceRemovalTracker(onPlayArea?: (area: PlayArea | null) => void) {
   const motion = createRollMotionTracker();
   let isClear: ReturnType<typeof captureTable> | null = null;
   let moved = false;
@@ -15,7 +16,8 @@ export function createDiceRemovalTracker() {
 
   return {
     capture(frame: CameraFrame, dice: readonly DetectedDie[]) {
-      isClear = dice.length ? captureTable(frame, dice) : null;
+      isClear = dice.length ? captureTable(frame, dice, onPlayArea) : null;
+      if (!dice.length) onPlayArea?.(null);
       motion.capture(frame, dice);
       moved = false;
       emptySince = lastSample = null;

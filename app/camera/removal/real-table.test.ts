@@ -8,6 +8,7 @@ import { detectDiceOpenCv } from "../detection/opencv-dice";
 import type { DetectedDie } from "../dice-types";
 import { captureTable } from "./clear-table";
 import { createDiceRemovalTracker } from "./dice-removal";
+import type { PlayArea } from "../play-area/play-area";
 
 const png = PNG.sync.read(readFileSync(new URL("../__fixtures__/rim-dice-3-4-4.png", import.meta.url)));
 const original = { width: png.width, height: png.height, data: new Uint8ClampedArray(png.data) };
@@ -36,6 +37,24 @@ function clearedTray() {
 }
 
 describe("removal on the captured tray", () => {
+  it("outlines the felt without spilling onto the gray rim or cutting holes around dice", () => {
+    const areas: (PlayArea | null)[] = [];
+    captureTable(original, dice, (area) => areas.push(area));
+    const area = areas[0];
+    expect(area).toBeTruthy();
+    if (!area) throw new Error("No playing surface found");
+    // Independently labelled interior/rim pixels in the raw 640×360 fixture.
+    // Read the SVG's scanline rectangles to check the region actually shown.
+    const rectangles = [...area.fill.matchAll(/M([\d.]+) ([\d.]+)H([\d.]+)V([\d.]+)H[\d.]+Z/g)]
+      .map((match) => match.slice(1).map(Number));
+    const contains = (x: number, y: number) => rectangles.some(([left, top, right, bottom]) => x >= left && x < right && y >= top && y < bottom);
+    for (const [x, y] of [[320, 220], [150, 200], [400, 200]]) expect(contains(x, y), `felt at ${x},${y}`).toBe(true);
+    for (const [x, y] of [[320, 340], [600, 300], [20, 300], [200, 50]]) expect(contains(x, y), `rim/background at ${x},${y}`).toBe(false);
+    for (const die of dice) expect(contains(die.x + die.width / 2, die.y + die.height / 2)).toBe(true);
+    expect(area.outline.match(/M/g)).toHaveLength(1);
+    expect(area.outline.endsWith("Z")).toBe(true);
+  });
+
   it("confirms a cleared tray despite a changed background above the rim", () => {
     const empty = clearedTray();
     for (let y = 2; y < 40; y++) {
