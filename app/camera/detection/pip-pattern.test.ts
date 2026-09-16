@@ -28,6 +28,17 @@ function projectedFace(value: DieValue): Pip[] {
 }
 
 describe("readPipPattern", () => {
+  it("rejects a shallow triangle in felt even when its pair distances resemble a three", () => {
+    // Measured marks below the central die in edge-dice-3-6-6.png.
+    const points: Point[] = [[9.7, 8.7], [9.04, 5.78], [12, 3.5]]
+      .map(([x, y]) => [(x + 0.5) / 20, (y + 0.5) / (20 * Math.SQRT1_2)]);
+    expect(readPipPattern(points, [1 / 20, 1 / (20 * Math.SQRT1_2)], true)).toBeNull();
+  });
+
+  it("tolerates a slightly displaced middle pip on a real three", () => {
+    expect(readPipPattern([[0.25, 0.25], [0.52, 0.48], [0.75, 0.75]])).toBe(3);
+  });
+
   it("allows pixel uncertainty in the outline and pip centers for a small three, scaling with image resolution", () => {
     const points: Point[] = [[0.4, 0.065], [0.5, 0.29], [0.6, 0.515]];
     expect(readPipPattern(points)).toBeNull();
@@ -93,6 +104,7 @@ describe("readPipPattern", () => {
     { name: "off-center pip", points: [[0.8, 0.8]] },
     { name: "triangle instead of three in a line", points: [[0.2, 0.3], [0.8, 0.3], [0.5, 0.8]] },
     { name: "coincident pips", points: [[0.5, 0.5], [0.5, 0.5]] },
+    { name: "coincident three", points: [[0.5, 0.5], [0.5, 0.5], [0.5, 0.5]] },
     { name: "off-center pair", points: [[0.15, 0.15], [0.42, 0.42]] },
     { name: "compact three-pip cluster", points: [[0.37, 0.37], [0.5, 0.5], [0.63, 0.63]] },
     { name: "pips too close together", points: [[0.4, 0.4], [0.6, 0.6]] },

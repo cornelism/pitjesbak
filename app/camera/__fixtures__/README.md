@@ -320,6 +320,18 @@
 Expected values describe the visible top faces, independently of the detector.
 The new regression cases remain ordinary assertions so missed dice fail loudly.
 
+## edge-dice-3-6-6.png
+
+- Provided on 2026-09-16 as `dice-camera-frame (48).png`, saved unchanged.
+- Raw 640 × 360 camera pixels; no overlays or preprocessing.
+- Manually labelled top faces, left to right: **3, 6, 6** (total **15**).
+- The left three touches a visible side face. Its perpendicular side pip made
+  the combined contour fail top-face recognition. A bent cluster of felt marks
+  below the central die also produced a false three at 45–60°.
+- Regression coverage: angle settings 45–70°, exposure multipliers 0.8/1.15 at
+  45° and 70°, and playing-surface inclusion/exclusion points around the tray.
+- Angle settings are test inputs, not a measured physical camera angle.
+
 ## angled-dice.png
 
 Earlier camera screenshot fixture, resized to 640 × 480. Expected top faces,

@@ -37,6 +37,28 @@ function clearedTray() {
 }
 
 describe("removal on the captured tray", () => {
+  it("keeps the playing surface inside the tray with a die near its left edge", () => {
+    const png = PNG.sync.read(readFileSync(new URL("../__fixtures__/edge-dice-3-6-6.png", import.meta.url)));
+    const frame = { width: png.width, height: png.height, data: new Uint8ClampedArray(png.data) };
+    const dice = detectDiceOpenCv(cv, frame, 45);
+    expect(dice.map((die) => die.value)).toEqual([3, 6, 6]);
+    const areas: (PlayArea | null)[] = [];
+    captureTable(frame, dice, (area) => areas.push(area));
+    const area = areas[0];
+    if (!area) throw new Error("No playing surface found");
+    const rectangles = [...area.fill.matchAll(/M([\d.]+) ([\d.]+)H([\d.]+)V([\d.]+)H[\d.]+Z/g)]
+      .map((match) => match.slice(1).map(Number));
+    const contains = (x: number, y: number) => rectangles.some(([left, top, right, bottom]) => x >= left && x < right && y >= top && y < bottom);
+    // Labelled directly from this raw image, independently of segmentation.
+    for (const [x, y] of [[80, 180], [320, 220], [500, 250], [300, 145], [393, 105]]) {
+      expect(contains(x, y), `felt/interior die at ${x},${y}`).toBe(true);
+    }
+    for (const [x, y] of [[320, 340], [600, 300], [20, 300], [200, 30], [30, 100]]) {
+      expect(contains(x, y), `rim/background at ${x},${y}`).toBe(false);
+    }
+    expect(area.outline.match(/M/g)).toHaveLength(1);
+  });
+
   it("outlines the felt without spilling onto the gray rim or cutting holes around dice", () => {
     const areas: (PlayArea | null)[] = [];
     captureTable(original, dice, (area) => areas.push(area));

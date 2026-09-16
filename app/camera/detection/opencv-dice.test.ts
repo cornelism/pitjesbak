@@ -68,6 +68,8 @@ const dimThreeFrame = loadCameraFrame("dim-dice-3-4-4.png");
 
 const distantSixFrame = loadCameraFrame("distant-six-dice-2-6-2.png");
 
+const edgeRollFrame = loadCameraFrame("edge-dice-3-6-6.png");
+
 const sideFaceFrame = loadCameraFrame("side-face-dice-4-6-2.png");
 
 function cropNewRoll(x: number, y: number, width: number, height: number) {
@@ -123,6 +125,21 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
   }
   return { width, height, data };
 }
+
+describe("dice near the tray edge", () => {
+  it.each([45, 50, 55, 60, 65, 70])("reads 3, 6, 6 without treating felt as a die at %i degrees", (angle) => {
+    const dice = detectDiceOpenCv(cv, edgeRollFrame, angle);
+    expect(dice.map((die) => die.value)).toEqual([3, 6, 6]);
+    expect(dice[0].x).toBeLessThan(60);
+  });
+
+  it.each([0.8, 1.15])("preserves the edge roll at exposure %s", (exposure) => {
+    const data = edgeRollFrame.data.map((value, i) => i % 4 === 3 ? value : value * exposure);
+    for (const angle of [45, 70]) {
+      expect(detectDiceOpenCv(cv, { ...edgeRollFrame, data }, angle).map((die) => die.value), `angle ${angle}`).toEqual([3, 6, 6]);
+    }
+  });
+});
 
 describe("OpenCV real-camera recognition", () => {
   it.each([45, 50, 55, 60, 65, 70])("reads the rim-pip 3, 4, 4 roll at %i degrees", (angle) => {

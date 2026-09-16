@@ -30,6 +30,16 @@ export function readPipPattern(points: readonly Point[], pixelSize: Point = [0, 
   const dy = Math.max(0, Math.abs(cy - 0.5) - centerAllowance * pixelSize[1]);
   if (Math.hypot(dx, dy) > 0.18) return null;
   if (count > 1) {
+    if (count === 3) {
+      // Distance ratios alone also accept a shallow triangle. A three's
+      // middle pip must lie close to the midpoint of its two outer pips.
+      const hasMiddle = points.some(([x, y], i) => {
+        const a = points[(i + 1) % 3], b = points[(i + 2) % 3];
+        const span = Math.hypot(a[0] - b[0], a[1] - b[1]);
+        return span > 0 && Math.hypot(x - (a[0] + b[0]) / 2, y - (a[1] + b[1]) / 2) <= span * 0.12;
+      });
+      if (!hasMiddle) return null;
+    }
     const actual = signature(points);
     const expected = patternSignatures[count - 1];
     // Pairs can have more inset dots. For small faces, allow one pixel at

@@ -2,6 +2,7 @@ import type { DieValue } from "../dice-types";
 import { hasConsistentPipSizes, readPipPattern, readSeparatedTop, readWholeFacePattern } from "./pip-pattern";
 import { readIsolatedTopOne } from "./isolated-top-pip";
 import { readTopBesideSide } from "./side-face-pips";
+import { readSeparatedTopThree } from "./separated-top-three";
 import { MAX_SINGLE_PIP_RATIO } from "./pip-contours";
 import type { EllipticalPip, Point } from "./types";
 import type { TopFace, FaceBounds } from "./top-face";
@@ -48,5 +49,6 @@ export function readDieValue(
     ?? (visibleSides
       ? readSeparatedTop(allPips, w, h, area * 0.085) : null)
     ?? (tilt > 0 ? readIsolatedTopOne(allPips, w, h) : null)
+    ?? (tilt > 0 ? readSeparatedTopThree(allPips, w, h, area * 0.085) : null)
     ?? (tilt > 0 ? readTopBesideSide(allPips, w, h, area * 0.085) : null);
 }
