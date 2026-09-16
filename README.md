@@ -195,7 +195,8 @@ The camera and game are independent features. Shared UI primitives live in
 - `app/camera/tracking`: roll confirmation and motion detection, independent of
   React and OpenCV. This layer decides when to freeze or release a reading.
 - `app/camera/components`: preview, reader controls, frame download, and marker
-  rendering. `use-dice-reader` coordinates sampling, detection, and tracking.
+  rendering. `use-dice-reader` owns React settings and display state;
+  `dice-reader-session` owns the sampling loop, detection, and tracking.
 - `app/game`: scoring and rule definitions, the `use-game` turn-state hook, and
   game presentation. Camera recognition does not depend on game rules.
 
