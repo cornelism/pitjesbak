@@ -63,17 +63,26 @@ export function detectDiceOpenCv(
         }
       }
     }
-    // Only unread slanted faces can use the rim retry; accepted values remain
-    // authoritative. Its extra marks must form a separated top-face pattern.
+    // A small accepted pair can still be a three with an open rim pip. Retry
+    // unread faces and pairs; changing a pair requires a measured third pip
+    // and the calibrated three-pip pattern, not merely a higher count.
     const rimCandidates = cameraTilt > 0
-      ? smallCandidates.filter((bounds) => !detected.some((die) => overlapsDie(bounds, die))) : [];
+      ? smallCandidates.filter((bounds) => {
+        const existing = detected.find((die) => overlapsDie(bounds, die));
+        return !existing || (existing.value === 2 && bounds.pipCount === 2);
+      }) : [];
     if (rimCandidates.length) {
       const detail = createDiceMasks(cv, frame, cameraTilt, own, "rim");
       for (const mask of [detail.binary, detail.local]) {
         if (!mask) continue;
-        addReadings(readDiceMask(cv, mask, cameraTilt, undefined, "rim").filter((die) =>
-          rimCandidates.some((bounds) => die.value > bounds.pipCount && sameRimTop(bounds, die)),
-        ));
+        for (const die of readDiceMask(cv, mask, cameraTilt, undefined, "rim")) {
+          if (!rimCandidates.some((bounds) => die.value > bounds.pipCount && sameRimTop(bounds, die))) continue;
+          const existing = detected.findIndex((other) => overlapsDie(die, other));
+          if (existing === -1) detected.push(die);
+          else if (detected[existing].value === 2 && die.value === 3 && sameRimTop(detected[existing], die)) {
+            detected[existing] = die;
+          }
+        }
       }
     }
     return detected.sort((a, b) => a.x - b.x || a.y - b.y);

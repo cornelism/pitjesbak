@@ -162,10 +162,17 @@ are deferred to a validated detail pass.
 If a small face is still unread, a final rim pass preserves unsmoothed pixels.
 It measures separate dark components inside the die's convex outline, including
 pips open to the rear edge. Four-connected components keep diagonally adjacent
-pips separate. At least three enclosed pips must already exist, and the recovered
-marks must form a four-, five-, or six-pip top separated from side marks. Raster
-area comparisons allow one pixel of uncertainty. This pass only fills previously
-located, unread faces; it cannot replace an accepted value.
+pips separate. Components confined to the outer hull boundary and one-pixel-wide
+vertical outline fragments are discarded; flat horizontal pips extending into
+the face remain valid. At least three enclosed pips must already exist
+to recover a four-, five-, or six-pip top. With exactly two enclosed pips, recovery
+requires a measured third component forming a centered, evenly spaced line in
+the calibrated top plane. The three-pip check includes the small-face pixel
+uncertainty for position and spread. Both paths require separation from side
+marks and consistent pip sizes; raster area comparisons allow one pixel of
+uncertainty. This pass only considers previously located small faces. It fills
+unread faces and can correct an accepted two to three when the same face contains
+a validated, measured third pip. Other accepted values remain unchanged.
 
 Duplicate suppression requires overlap covering at least a quarter of the smaller
 die box. Small shared corners between adjacent rounded dice do not discard a die.

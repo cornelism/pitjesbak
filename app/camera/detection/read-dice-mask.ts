@@ -53,7 +53,7 @@ export function readDiceMask(
             continue;
           }
           const value = detail === "rim"
-            ? readRimTop(cv, binary, contour, bounds, pips.length)
+            ? readRimTop(cv, binary, contour, bounds, pips.length, tilt)
             : readDieValue(pips, face, bounds, area, tilt, detail === "small");
           if (value) detected.push({ value, x, y, width: w, height: h });
           // At low resolution even a valid count may have merged or missing

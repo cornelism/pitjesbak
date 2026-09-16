@@ -1,5 +1,28 @@
 # Real camera fixtures
 
+## rim-dice-3-4-4.png
+
+- User-provided raw camera frame `dice-camera-frame (45).png`, saved unchanged
+  at 640 × 360 pixels on 2026-09-16.
+- Manually read top faces from left to right: **3, 4, 4** (total **11**).
+- The rear three and front four each have a pip opening into the top outline.
+  The rim pass now supports three measured, evenly spaced pips using the camera
+  projection and two enclosed pips as supporting evidence. Larger recovered
+  patterns still require at least three enclosed pips.
+- A one-pixel-wide vertical fragment of the front die's outline appeared among
+  its top pips. Discarding vertical slivers restores the four while preserving
+  one-pixel-high horizontal pips on foreshortened faces.
+- At 55°, and at 70° after subpixel resampling, earlier passes can accept the
+  rear three as two. Rim recovery can now replace that pair with a validated
+  three on the same face. Tiny dark fragments confined to the hull boundary
+  are ignored, while genuine pips must extend into the face interior.
+- Tests cover every 5° setting from 45° to 70°, exposure multipliers 0.8/1.15
+  at 45°/55°/70°, and 11 subpixel/exposure variants reproducing 2, 4, 4 at 70°.
+  Erasing a rim pip prevents its recovery: the rear die stays a two at 55°
+  or unread at 45°/70°, and the front die remains unread. Unit tests cover
+  component shape, missing/extra marks, spacing, side separation, and pip size.
+- Angles are test settings, not a measured physical camera angle.
+
 ## nearby-dice-5-5-2.png
 
 - User-provided raw camera frame `dice-camera-frame (44).png`, saved unchanged

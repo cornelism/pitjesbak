@@ -5,6 +5,7 @@ import { PNG } from "pngjs";
 import { beforeAll, describe, expect, it } from "vitest";
 import type * as OpenCv from "@techstark/opencv-js";
 import { detectDiceOpenCv } from "./opencv-dice";
+import { withCvResources } from "./cv-resources";
 import type { DieValue } from "../dice-types";
 
 let cv: typeof OpenCv;
@@ -52,6 +53,8 @@ const wideFrame = loadCameraFrame("wide-dice-1-2-1.png");
 const wideSixFrame = loadCameraFrame("wide-dice-6-5-1.png");
 
 const shadowFrame = loadCameraFrame("shadow-dice-2-4-1.png");
+
+const rimThreeFoursFrame = loadCameraFrame("rim-dice-3-4-4.png");
 
 const nearbyFivesFrame = loadCameraFrame("nearby-dice-5-5-2.png");
 
@@ -122,6 +125,64 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it.each([45, 50, 55, 60, 65, 70])("reads the rim-pip 3, 4, 4 roll at %i degrees", (angle) => {
+    expect(detectDiceOpenCv(cv, rimThreeFoursFrame, angle).map((die) => die.value)).toEqual([3, 4, 4]);
+  });
+
+  it.each([45, 55, 70].flatMap((angle) => [0.8, 1.15].map((exposure) => ({ angle, exposure }))))(
+    "reads the rim three and fours at $angle degrees and exposure $exposure", ({ angle, exposure }) => {
+      const data = rimThreeFoursFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+      expect(detectDiceOpenCv(cv, { ...rimThreeFoursFrame, data }, angle).map((die) => die.value)).toEqual([3, 4, 4]);
+    },
+  );
+
+  // Subpixel resampling reproduces the live 70° partial pair: both a real
+  // open pip and a spurious dark hull-edge fragment can change by one pixel.
+  it.each([
+    [0, 0.25, 0.95],
+    [0, 0.75, 0.95], [0, 0.75, 1], [0, 0.75, 1.05],
+    [0.25, 0.25, 1], [0.25, 0.25, 1.05], [0.25, 0.5, 1],
+    [0.75, 0.5, 0.95],
+    [0.75, 0.75, 0.95], [0.75, 0.75, 1], [0.75, 0.75, 1.05],
+  ])("recovers 3, 4, 4 at 70° with pixel shift (%s, %s) and exposure %s", (dx, dy, exposure) => {
+    withCvResources((own) => {
+      const source = own(cv.matFromImageData(rimThreeFoursFrame));
+      const shifted = own(new cv.Mat());
+      const translation = own(cv.matFromArray(2, 3, cv.CV_64F, [1, 0, dx, 0, 1, dy]));
+      cv.warpAffine(source, shifted, translation, new cv.Size(source.cols, source.rows), cv.INTER_LINEAR, cv.BORDER_REFLECT);
+      const data = new Uint8ClampedArray(shifted.data).map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+      expect(detectDiceOpenCv(cv, { ...rimThreeFoursFrame, data }, 70).map((die) => die.value)).toEqual([3, 4, 4]);
+    });
+  });
+
+  it.each([
+    { angle: 45, expected: [4, 4] },
+    // At 55° the remaining two pips form an accepted pair. Recovery must
+    // preserve it when the pixels contain no third pip.
+    { angle: 55, expected: [2, 4, 4] },
+    { angle: 70, expected: [4, 4] },
+  ])("does not invent the rear three's erased rim pip at $angle degrees", ({ angle, expected }) => {
+    const data = new Uint8ClampedArray(rimThreeFoursFrame.data);
+    const color = data.slice((110 * rimThreeFoursFrame.width + 323) * 4, (110 * rimThreeFoursFrame.width + 323) * 4 + 4);
+    for (let y = 105; y <= 108; y++) {
+      for (let x = 323; x <= 328; x++) {
+        data.set(color, (y * rimThreeFoursFrame.width + x) * 4);
+      }
+    }
+    expect(detectDiceOpenCv(cv, { ...rimThreeFoursFrame, data }, angle).map((die) => die.value)).toEqual(expected);
+  });
+
+  it.each([45, 55, 70])("does not invent the front four's erased rim pip at %i degrees", (angle) => {
+    const data = new Uint8ClampedArray(rimThreeFoursFrame.data);
+    const color = data.slice((138 * rimThreeFoursFrame.width + 380) * 4, (138 * rimThreeFoursFrame.width + 380) * 4 + 4);
+    for (let y = 134; y <= 137; y++) {
+      for (let x = 375; x <= 380; x++) {
+        data.set(color, (y * rimThreeFoursFrame.width + x) * 4);
+      }
+    }
+    expect(detectDiceOpenCv(cv, { ...rimThreeFoursFrame, data }, angle).map((die) => die.value)).toEqual([3, 4]);
+  });
+
   it.each([45, 50, 65, 70])("reads the nearby 5, 5, 2 roll at %i degrees", (angle) => {
     expect(detectDiceOpenCv(cv, nearbyFivesFrame, angle).map((die) => die.value)).toEqual([5, 5, 2]);
   });
