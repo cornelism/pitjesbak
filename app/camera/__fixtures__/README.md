@@ -1,5 +1,16 @@
 # Real camera fixtures
 
+## touching-dice-3-1-3.png
+
+- Captured on 2026-09-16 directly from the browser video with **Save camera frame**.
+- Original unannotated 640 × 480 pixels at the **45°** control setting.
+- Manually read top faces, ordered left to right: **3, 1, 3** (total **7**).
+- Straight contact cuts graze the nearest pip's protective rim, so the old
+  splitter rejects the entire chain. A narrow four-connected route around the
+  protected pixels separates the faces without changing pip validation.
+- Tests cover 45° and 50° settings and moderate exposure changes. Separate
+  routing tests reject cuts requiring wide detours or crossing protected pixels.
+
 ## touching-dice-1-1-3*.png
 
 - Captured on 2026-09-16 directly from the browser video with **Save camera frame**.

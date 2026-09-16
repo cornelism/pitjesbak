@@ -116,7 +116,9 @@ faces joined, it retries with a larger opening, retaining the same area and
 minimum piece-size checks. Pip holes retain their original pixels. This handles
 contacts with a distinct neck. If opening fails, a fallback pairs opposing
 indentations in the outline and cuts across the contacts. It rejects cuts near
-pip holes or cuts that leave small fragments. Broad overlaps without clear
+pip holes or cuts that leave small fragments. If a straight cut grazes a pip,
+it tries a narrow continuous detour around the pip and its protective rim,
+then repeats the area and fragment checks. Broad overlaps without clear
 indentations can still require moving dice apart.
 
 Face selection happens before pip counting. With an upright camera, an isolated

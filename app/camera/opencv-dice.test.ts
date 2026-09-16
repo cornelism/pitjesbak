@@ -52,6 +52,9 @@ const shallowChainFrame = { width: shallowChainPng.width, height: shallowChainPn
 const shallowChainLivePng = PNG.sync.read(readFileSync(new URL("./__fixtures__/touching-dice-1-1-3-live.png", import.meta.url)));
 const shallowChainLiveFrame = { width: shallowChainLivePng.width, height: shallowChainLivePng.height, data: new Uint8ClampedArray(shallowChainLivePng.data) };
 
+const nearPipChainPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/touching-dice-3-1-3.png", import.meta.url)));
+const nearPipChainFrame = { width: nearPipChainPng.width, height: nearPipChainPng.height, data: new Uint8ClampedArray(nearPipChainPng.data) };
+
 function cropNewRoll(x: number, y: number, width: number, height: number) {
   const data = new Uint8ClampedArray(width * height * 4);
   for (let row = 0; row < height; row++) {
@@ -107,6 +110,15 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it.each([45, 50])("reads the touching 3, 1, 3 chain without cutting a pip at %i degrees", (angle) => {
+    expect(detectDiceOpenCv(cv, nearPipChainFrame, angle).map((die) => die.value)).toEqual([3, 1, 3]);
+  });
+
+  it.each([0.8, 1.15])("preserves the 3, 1, 3 chain at exposure multiplier %s", (exposure) => {
+    const data = nearPipChainFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...nearPipChainFrame, data }, 45).map((die) => die.value)).toEqual([3, 1, 3]);
+  });
+
   it("reads the 1, 1, 3 chain in a later live camera frame", () => {
     expect(detectDiceOpenCv(cv, shallowChainLiveFrame, 45).map((die) => die.value)).toEqual([1, 1, 3]);
   });

@@ -1,5 +1,6 @@
 import type * as OpenCv from "@techstark/opencv-js";
 import { findFaceNeckCuts } from "./face-neck-cuts";
+import { routeFaceCut } from "./face-cut-path";
 import type { Point } from "./face-perspective";
 
 /** Split joined dice using their filled silhouettes, preserving pip holes.
@@ -91,7 +92,23 @@ export function separateDice(cv: typeof OpenCv, binary: OpenCv.Mat): void {
         for (const [a, b] of cuts) {
           cv.line(opened, new cv.Point(...a), new cv.Point(...b), new cv.Scalar(0), Math.max(1, Math.round(radius * 0.08)));
         }
-        applySplit(true);
+        if (applySplit(true)) continue;
+
+        // A straight contact cut may graze a pip. Try a narrow, four-connected
+        // detour through unprotected pixels, keeping the same split checks.
+        const holes = own(new cv.Mat());
+        cv.subtract(silhouette, region, holes);
+        const protectedPips = own(new cv.Mat());
+        const margin = own(cv.Mat.ones(3, 3, cv.CV_8UC1));
+        cv.dilate(holes, protectedPips, margin);
+        silhouette.copyTo(opened);
+        let routed = true;
+        for (const [a, b] of cuts) {
+          const path = routeFaceCut(a, b, protectedPips, Math.max(2, radius * 0.12));
+          if (!path) { routed = false; break; }
+          for (const [px, py] of path) opened.data[py * width + px] = 0;
+        }
+        if (routed) applySplit(true);
       } finally {
         for (const object of owned.reverse()) object.delete();
       }
