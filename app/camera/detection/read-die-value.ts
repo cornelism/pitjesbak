@@ -3,7 +3,7 @@ import { hasConsistentPipSizes, readPipPattern, readSeparatedTop, readWholeFaceP
 import { readIsolatedTopOne } from "./isolated-top-pip";
 import { readTopBesideSide } from "./side-face-pips";
 import { MAX_SINGLE_PIP_RATIO } from "./pip-contours";
-import type { EllipticalPip } from "./types";
+import type { EllipticalPip, Point } from "./types";
 import type { TopFace, FaceBounds } from "./top-face";
 
 export function readDieValue(
@@ -23,8 +23,11 @@ export function readDieValue(
   const maxPipRatio = count === 1 ? MAX_SINGLE_PIP_RATIO : 0.085;
   const consistentPips = hasConsistentPipSizes(facePips)
     && facePips.every((pip) => pip.area / area <= maxPipRatio);
+  // The calibrated projection is linear, so one image pixel has these
+  // normalized extents. Overhead homography validation keeps its strict path.
+  const pixelSize: Point = tilt > 0 ? [1 / (w - 1), 1 / ((w - 1) * Math.cos(tilt))] : [0, 0];
   const validatedCount = consistentPips
-    ? readPipPattern(facePips.map((pip) => rectify(pip.point)))
+    ? readPipPattern(facePips.map((pip) => rectify(pip.point)), pixelSize)
       ?? (tilt > 0 && completeFace ? readWholeFacePattern(facePips, w, h) : null)
     : null;
   // For cubes, a separated upper cluster can refine the estimated mask.

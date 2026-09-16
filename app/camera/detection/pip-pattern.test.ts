@@ -28,6 +28,25 @@ function projectedFace(value: DieValue): Pip[] {
 }
 
 describe("readPipPattern", () => {
+  it("allows pixel uncertainty in the outline and pip centers for a small three, scaling with image resolution", () => {
+    const points: Point[] = [[0.4, 0.065], [0.5, 0.29], [0.6, 0.515]];
+    expect(readPipPattern(points)).toBeNull();
+    expect(readPipPattern(points, [1 / 32, 1 / 24])).toBe(3);
+    // The same proportional offset is beyond the pixel allowance on a larger face.
+    expect(readPipPattern(points, [1 / 128, 1 / 96])).toBeNull();
+  });
+
+  it.each<{ name: string; points: Point[] }>([
+    { name: "one", points: [[0.5, 0.3]] },
+    { name: "two", points: [[0.3, 0.3], [0.7, 0.3]] },
+    { name: "far off-center three", points: [[0.3, 0.2], [0.5, 0.2], [0.7, 0.2]] },
+    { name: "triangle", points: [[0.3, 0.1], [0.7, 0.1], [0.5, 0.7]] },
+    { name: "uneven three", points: [[0.5, 0.08], [0.5, 0.16], [0.5, 0.64]] },
+    { name: "compact three", points: [[0.4, 0.29], [0.5, 0.29], [0.6, 0.29]] },
+  ])("keeps rejecting $name with pixel uncertainty", ({ points }) => {
+    expect(readPipPattern(points, [1 / 32, 1 / 24])).toBeNull();
+  });
+
   it("reads a compact two-pip face regardless of rotation", () => {
     for (const angle of [0, 0.4, Math.PI / 4, 1.2]) {
       const points = normalizedFace(2, angle).map(([x, y]): Point => [

@@ -16,13 +16,18 @@ function signature(points: readonly Point[]) {
   return { distances: distances.map((distance) => distance / span), span };
 }
 
-export function readPipPattern(points: readonly Point[]): DieValue | null {
+export function readPipPattern(points: readonly Point[], pixelSize: Point = [0, 0]): DieValue | null {
   const count = points.length;
   if (count !== 1 && count !== 2 && count !== 3 && count !== 4 && count !== 5 && count !== 6) return null;
   if (points.some(([x, y]) => !Number.isFinite(x) || !Number.isFinite(y) || x <= 0 || x >= 1 || y <= 0 || y >= 1)) return null;
   const cx = points.reduce((sum, point) => sum + point[0], 0) / count;
   const cy = points.reduce((sum, point) => sum + point[1], 0) / count;
-  if (Math.hypot(cx - 0.5, cy - 0.5) > 0.18) return null;
+  // Thresholding can move both the outline and pip center by a pixel.
+  // Allow their combined uncertainty only for layouts with at least three
+  // measured pips; spacing and shape must still pass the checks below.
+  const dx = Math.max(0, Math.abs(cx - 0.5) - (count >= 3 ? 2 * pixelSize[0] : 0));
+  const dy = Math.max(0, Math.abs(cy - 0.5) - (count >= 3 ? 2 * pixelSize[1] : 0));
+  if (Math.hypot(dx, dy) > 0.18) return null;
   if (count > 1) {
     const actual = signature(points);
     const expected = patternSignatures[count - 1];

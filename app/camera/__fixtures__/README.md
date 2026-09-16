@@ -1,5 +1,22 @@
 # Real camera fixtures
 
+## wide-table-dice-3-6-4.png
+
+- User-provided raw camera frame `dice-camera-frame (40).png`, saved unchanged
+  at 640 × 360 pixels on 2026-09-16.
+- Manually read top faces from left to right: **3, 6, 4** (total **13**).
+- The wide view makes the dice small. Gentler smoothing recovers all three
+  pips on the left die, but their center previously missed the normalized
+  position limit by less than one image pixel.
+- Multi-pip pattern validation accounts for a pixel of uncertainty in both the
+  outline and pip centers under the calibrated projection (two pixels combined),
+  while retaining spacing and shape checks. Exposure can move the outline by
+  an extra pixel in this frame.
+  Single-pip and two-pip readings keep their original position limits.
+- Tests cover 45° and 50° and exposure multipliers 0.8/1.15. Pattern tests cover
+  resolution scaling and rejection of off-center or invalid arrangements.
+- Angles are test settings, not a measured physical camera angle.
+
 ## dim-dice-3-4-4.png
 
 - User-provided raw camera frame `dice-camera-frame (38).png`, saved unchanged

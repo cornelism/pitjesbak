@@ -160,6 +160,11 @@ the angle-based side mask only to taller cube contours. It counts the selected
 pips, then validates their arrangement. Complete faces never retry a smaller subset
 to force a match: this prevents cutting a six down to a four.
 
+For calibrated views, layouts with three or more pips allow a pixel of uncertainty
+in both the outline and pip centers (two pixels combined). This allowance scales
+with the face size; spacing, shape, and pip-count checks remain unchanged. One-
+and two-pip faces retain the original center limits.
+
 For a complete four-, five-, or six-pip face, pattern validation normalizes scale
 and shear rather than relying on sharp corners in the rounded die outline. The
 cluster must be centered and fill the face. Face selection remains a geometric
