@@ -72,6 +72,9 @@ const wideSixFrame = { width: wideSixPng.width, height: wideSixPng.height, data:
 const shadowPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/shadow-dice-2-4-1.png", import.meta.url)));
 const shadowFrame = { width: shadowPng.width, height: shadowPng.height, data: new Uint8ClampedArray(shadowPng.data) };
 
+const sideFacePng = PNG.sync.read(readFileSync(new URL("./__fixtures__/side-face-dice-4-6-2.png", import.meta.url)));
+const sideFaceFrame = { width: sideFacePng.width, height: sideFacePng.height, data: new Uint8ClampedArray(sideFacePng.data) };
+
 function cropNewRoll(x: number, y: number, width: number, height: number) {
   const data = new Uint8ClampedArray(width * height * 4);
   for (let row = 0; row < height; row++) {
@@ -127,6 +130,15 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it.each([45, 50])("reads 4, 6, 2 without counting the four's right-side pips at %i degrees", (angle) => {
+    expect(detectDiceOpenCv(cv, sideFaceFrame, angle).map((die) => die.value)).toEqual([4, 6, 2]);
+  });
+
+  it.each([0.8, 1.15])("reads the side-face 4, 6, 2 roll at exposure multiplier %s", (exposure) => {
+    const data = sideFaceFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...sideFaceFrame, data }, 45).map((die) => die.value)).toEqual([4, 6, 2]);
+  });
+
   it.each([45, 50])("does not count a shadow as a fourth die at %i degrees", (angle) => {
     expect(detectDiceOpenCv(cv, shadowFrame, angle).map((die) => die.value)).toEqual([2, 4, 1]);
   });

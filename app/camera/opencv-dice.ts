@@ -4,6 +4,7 @@ import { faceRectifier, type Point } from "./face-perspective";
 import { hasConsistentPipSizes, readPipPattern, readSeparatedTop, readWholeFacePattern, type Pip } from "./pip-pattern";
 import { separateDice } from "./separate-dice";
 import { readIsolatedTopOne, type EllipticalPip } from "./isolated-top-pip";
+import { readTopBesideSide } from "./side-face-pips";
 
 const MAX_SINGLE_PIP_RATIO = 0.2;
 
@@ -190,7 +191,8 @@ function readDiceMask(cv: typeof OpenCv, binary: OpenCv.Mat, cameraTilt: number)
           const value = validatedCount
             ?? (visibleSides
               ? readSeparatedTop(allPips, w, h, area * 0.085) : null)
-            ?? (tilt > 0 ? readIsolatedTopOne(allPips, w, h) : null);
+            ?? (tilt > 0 ? readIsolatedTopOne(allPips, w, h) : null)
+            ?? (tilt > 0 ? readTopBesideSide(allPips, w, h, area * 0.085) : null);
           if (value) detected.push({ value, x, y, width: w, height: h });
         } finally {
           silhouette.delete();

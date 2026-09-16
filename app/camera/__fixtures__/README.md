@@ -1,5 +1,18 @@
 # Real camera fixtures
 
+## side-face-dice-4-6-2.png
+
+- User-provided raw camera frame `dice-camera-frame (30).png`, saved unchanged
+  at 640 × 360 pixels on 2026-09-16.
+- Manually read top faces from left to right: **4, 6, 2** (total **12**).
+- The front four's top and right side share an outline. Two narrow vertical
+  side pips enter the whole-face count, making the otherwise valid four fail.
+- The fallback requires multiple flattened vertical pips at the same edge,
+  separated from rounder top pips. It validates every remaining top pip with
+  the existing whole-face matcher and multi-pip area limit.
+- Tests cover 45° and 50° plus exposure changes. Helper tests reject coplanar
+  marks, extra top marks, oversized pips, and ambiguous side separation.
+
 ## shadow-dice-2-4-1.png
 
 - Captured on 2026-09-16 directly from the browser video at 640 × 360 pixels,

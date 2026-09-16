@@ -127,6 +127,9 @@ If a larger matching pattern overlaps another mark, the detector rejects the
 ambiguous cluster instead of trying a smaller subset.
 Outlines taller than 1.6 times their width are rejected as implausible upright
 cubes, preventing long shadow fragments with small holes from becoming dice.
+For a nearly overhead top joined to a narrow side, multiple flattened vertical
+pips at one edge can identify that side. The remaining, rounder top pips must
+all form a valid four-, five-, or six-pip face, with a clear gap from the side.
 A single centered pip can occupy up to 20% of the thresholded face, accounting
 for large one-face dots and tighter outlines under bright light. Individual pips
 on multi-pip faces retain the stricter 8.5% limit.
