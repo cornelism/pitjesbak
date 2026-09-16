@@ -87,14 +87,14 @@ function matchesAffinePattern(points: readonly Point[], count: 4 | 5 | 6): boole
     && actual.every((distance, i) => Math.abs(distance - expected[i]) <= 0.09);
 }
 
-export function readSeparatedTop(pips: readonly Pip[], width: number, height: number, maxPipArea = Infinity): DieValue | null {
+export function readSeparatedTop(pips: readonly Pip[], width: number, height: number, maxPipArea = Infinity, areaUncertainty = 0): DieValue | null {
   const ordered = [...pips].sort((a, b) => a.point[1] - b.point[1]);
   for (const count of [6, 5, 4] as const) {
     if (ordered.length < count) continue;
     const face = ordered.slice(0, count);
     const lowest = face[count - 1].point[1];
     const largestArea = Math.max(...face.map((pip) => pip.area));
-    if (!hasConsistentPipSizes(face) || largestArea > maxPipArea) continue;
+    if (!hasConsistentPipSizes(face, areaUncertainty) || largestArea > maxPipArea) continue;
     const points = face.map((pip) => pip.point);
     const xs = points.map(([x]) => x);
     const cy = points.reduce((sum, [, y]) => sum + y, 0) / count;
@@ -114,8 +114,10 @@ export function readSeparatedTop(pips: readonly Pip[], width: number, height: nu
 const patternSignatures = patterns.map(signature);
 const affinePatternSignatures = patterns.map(affineSignature);
 
-export function hasConsistentPipSizes(pips: readonly Pip[]): boolean {
+export function hasConsistentPipSizes(pips: readonly Pip[], areaUncertainty = 0): boolean {
   if (!pips.length) return false;
   const areas = pips.map((pip) => pip.area);
-  return Math.max(...areas) / Math.min(...areas) <= 2.5;
+  // Raster component areas can vary by one pixel at either end of the range.
+  // Polygon-based pip measurements retain the original strict ratio by default.
+  return (Math.max(...areas) - areaUncertainty) / (Math.min(...areas) + areaUncertainty) <= 2.5;
 }

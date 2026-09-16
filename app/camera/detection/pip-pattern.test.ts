@@ -235,6 +235,13 @@ describe("readWholeFacePattern", () => {
 });
 
 describe("hasConsistentPipSizes", () => {
+  it("allows one pixel of area uncertainty only for raster measurements", () => {
+    const pips: Pip[] = [3, 3, 5, 9].map((area) => ({ point: [0, 0], area }));
+    expect(hasConsistentPipSizes(pips)).toBe(false);
+    expect(hasConsistentPipSizes(pips, 1)).toBe(true);
+    expect(hasConsistentPipSizes([...pips, { point: [0, 0], area: 13 }], 1)).toBe(false);
+  });
+
   it.each([
     { name: "no pips", areas: [], expected: false },
     { name: "single pip", areas: [12], expected: true },

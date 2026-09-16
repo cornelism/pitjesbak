@@ -53,6 +53,8 @@ const wideSixFrame = loadCameraFrame("wide-dice-6-5-1.png");
 
 const shadowFrame = loadCameraFrame("shadow-dice-2-4-1.png");
 
+const farFiveFrame = loadCameraFrame("far-five-dice-2-5-2.png");
+
 const distantRollFrame = loadCameraFrame("distant-dice-4-3-2.png");
 
 const wideTableFrame = loadCameraFrame("wide-table-dice-3-6-4.png");
@@ -118,6 +120,28 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it.each([45, 50])("reads the far five in the 2, 5, 2 roll at %i degrees", (angle) => {
+    expect(detectDiceOpenCv(cv, farFiveFrame, angle).map((die) => die.value)).toEqual([2, 5, 2]);
+  });
+
+  it.each([0.8, 1.15])("reads the far-five roll at exposure multiplier %s", (exposure) => {
+    const data = farFiveFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...farFiveFrame, data }, 45).map((die) => die.value)).toEqual([2, 5, 2]);
+  });
+
+  it.each([45, 50])("does not invent the far five when its rear rim pip is erased at %i degrees", (angle) => {
+    const data = new Uint8ClampedArray(farFiveFrame.data);
+    // Fill the rear-right dark notch with the adjacent face color.
+    for (let y = 56; y <= 59; y++) {
+      for (let x = 350; x <= 357; x++) {
+        if (((x - 353.5) / 3.5) ** 2 + ((y - 57.5) / 1.5) ** 2 <= 1) {
+          data.set([168, 146, 126, 255], (y * farFiveFrame.width + x) * 4);
+        }
+      }
+    }
+    expect(detectDiceOpenCv(cv, { ...farFiveFrame, data }, angle).map((die) => die.value)).toEqual([2, 2]);
+  });
+
   it.each([45, 50])("reads the distant 4, 3, 2 roll at %i degrees", (angle) => {
     expect(detectDiceOpenCv(cv, distantRollFrame, angle).map((die) => die.value)).toEqual([4, 3, 2]);
   });

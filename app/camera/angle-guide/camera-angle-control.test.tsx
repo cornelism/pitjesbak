@@ -25,16 +25,16 @@ it("shows the guide on keyboard focus, updates with the angle, and removes it af
   expect(screen.getByText("Camera angle: 60°")).toBeTruthy();
   const updated = screen.getByTestId("camera-angle-grid");
   expect(updated).not.toBe(initial); // Restart the fade after each adjustment.
-  const scale = updated.querySelector("pattern")?.getAttribute("patternTransform")?.match(/scale\(1 ([\d.]+)\)/);
-  expect(Number(scale?.[1])).toBeCloseTo(0.5);
+  expect(updated.querySelector("path")?.getAttribute("d"))
+    .not.toBe(initial.querySelector("path")?.getAttribute("d"));
   expect(updated.classList.contains("pointer-events-none")).toBe(true);
 
   fireEvent.animationEnd(updated);
   expect(screen.queryByTestId("camera-angle-grid")).toBeNull();
   // Subsequent keyboard adjustments work without having to refocus.
   fireEvent.change(slider, { target: { value: "0" } });
-  expect(screen.getByTestId("camera-angle-grid").querySelector("pattern")?.getAttribute("patternTransform"))
-    .toContain("scale(1 1)");
+  expect(screen.getByTestId("camera-angle-grid").querySelector("path")?.getAttribute("d"))
+    .not.toBe(updated.querySelector("path")?.getAttribute("d"));
 });
 
 it.each(["pointerUp", "pointerCancel", "lostPointerCapture", "blur"] as const)(

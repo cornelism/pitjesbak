@@ -1,5 +1,20 @@
 # Real camera fixtures
 
+## far-five-dice-2-5-2.png
+
+- User-provided raw camera frame `dice-camera-frame (42).png`, saved unchanged
+  at 640 × 360 pixels on 2026-09-16.
+- Manually read top faces from left to right: **2, 5, 2** (total **9**).
+- The distant five's top mask is only about 23 × 13 pixels. Smoothing loses
+  rear pips, and one pip opens into the outline. A final unsmoothed rim pass
+  measures dark components inside the convex outline and validates the top
+  pattern separately from lower side marks. Components use four-connectivity
+  so diagonal contact cannot turn the five into a plausible four.
+- Tests cover 45°/50°, exposure multipliers 0.8/1.15, and erasing the rear rim
+  pip. The altered face must remain unread. Synthetic tests cover missing and
+  extra marks, side pips, supporting enclosed pips, and candidate matching.
+- Angles are test settings, not a measured physical camera angle.
+
 ## distant-dice-4-3-2.png
 
 - User-provided raw camera frame `dice-camera-frame (41).png`, saved unchanged

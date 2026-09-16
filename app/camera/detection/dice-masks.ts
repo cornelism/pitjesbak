@@ -13,7 +13,7 @@ export function createDiceMasks(
   frame: Pick<ImageData, "data" | "width" | "height">,
   cameraTilt: number,
   own: OwnCvResource,
-  profile: "standard" | "gentle" | "small" = "standard",
+  profile: "standard" | "gentle" | "small" | "rim" = "standard",
 ): { binary: OpenCv.Mat; local: OpenCv.Mat | null } {
   const { width, height, data } = frame;
   const source = own(cv.matFromArray(height, width, cv.CV_8UC4, data));
@@ -23,11 +23,12 @@ export function createDiceMasks(
   cv.cvtColor(source, gray, cv.COLOR_RGBA2GRAY);
   // Gentle smoothing preserves thin light gaps between distant pips when a
   // candidate could not be read with the standard noise suppression.
-  cv.GaussianBlur(gray, gray, new cv.Size(3, 3), profile === "standard" ? 0 : 0.5);
+  // The last rim retry preserves raw one-pixel marks and narrow notches.
+  if (profile !== "rim") cv.GaussianBlur(gray, gray, new cv.Size(3, 3), profile === "standard" ? 0 : 0.5);
   // Small faces need a wider light rim as well as gentler smoothing. These
   // masks are only consulted for previously located, low-resolution faces.
-  const rimRatio = profile === "small" ? 0.6 : 0.75;
-  const brightRimRatio = profile === "small" ? 0.6 : 0.95;
+  const rimRatio = profile === "rim" ? 0.5 : profile === "small" ? 0.6 : 0.75;
+  const brightRimRatio = profile === "rim" ? 0.5 : profile === "small" ? 0.6 : 0.95;
   const threshold = cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
   // Preserve narrow light rims around small, foreshortened pips. At the
   // unadjusted Otsu threshold those holes can merge with the background.

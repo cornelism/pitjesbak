@@ -79,7 +79,9 @@ logging. The captured real-camera fixtures read **3, 5, 3**, **6, 1, 5**, and
   the actual view. This setting resets to 45° when the camera restarts.
 - Focusing or adjusting **Camera angle** shows a transparent grid over the preview.
   It fills the camera view and clips at the preview edges. Its cells are square
-  at 0° and compress with the selected angle. The guide stays
+  at 0°; at a slanted angle, columns converge and rows get closer toward the back
+  of the table. This perspective illustration assumes a roughly 53° field of view,
+  rather than a calibrated camera lens. The guide stays
   visible while dragging, then fades after two seconds; keyboard changes bring it
   back. It illustrates the selected setting, rather than measuring the table, and
   is excluded from detection and saved camera frames.
@@ -151,8 +153,17 @@ turn a four into a plausible pair or merge a three into a single mark. This pass
 uses gentler smoothing and a lower threshold to retain thin light rims. It must
 match a previously located face, isolate its complete top without visible sides,
 and validate every selected pip. It may replace an accepted count only when it
-recovers additional pips. The minimum contour area scales with the camera tilt;
-contours below the original 225-pixel floor are deferred to this detail pass.
+recovers additional pips. Angled candidate filtering allows the projected area
+at the maximum supported 60° tilt; contours below the original 225-pixel floor
+are deferred to a validated detail pass.
+
+If a small face is still unread, a final rim pass preserves unsmoothed pixels.
+It measures separate dark components inside the die's convex outline, including
+pips open to the rear edge. Four-connected components keep diagonally adjacent
+pips separate. At least three enclosed pips must already exist, and the recovered
+marks must form a four-, five-, or six-pip top separated from side marks. Raster
+area comparisons allow one pixel of uncertainty. This pass only fills previously
+located, unread faces; it cannot replace an accepted value.
 
 Before selecting faces, the detector checks indented outlines for narrow
 connections between nearby dice. It opens a filled copy of the outline (shrinks

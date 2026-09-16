@@ -4,6 +4,7 @@ import { withCvResources } from "./cv-resources";
 import { createDiceMasks } from "./dice-masks";
 import { readDiceMask } from "./read-dice-mask";
 import type { FaceBounds } from "./top-face";
+import { sameRimTop } from "./rim-pips";
 
 function overlaps(a: FaceBounds, b: FaceBounds): boolean {
   return a.x < b.x + b.width && a.x + a.width > b.x
@@ -63,13 +64,26 @@ export function detectDiceOpenCv(
       const detail = createDiceMasks(cv, frame, cameraTilt, own, "small");
       for (const mask of [detail.binary, detail.local]) {
         if (!mask) continue;
-        const readings = readDiceMask(cv, mask, cameraTilt, undefined, true);
+        const readings = readDiceMask(cv, mask, cameraTilt, undefined, "small");
         for (const die of readings) {
           if (die.value < 2 || !smallCandidates.some((bounds) => die.value >= bounds.pipCount && sameFace(bounds, die))) continue;
           const existing = detected.findIndex((other) => overlaps(die, other));
           if (existing === -1) detected.push(die);
           else if (sameFace(detected[existing], die) && die.value > detected[existing].value) detected[existing] = die;
         }
+      }
+    }
+    // Only unread slanted faces can use the rim retry; accepted values remain
+    // authoritative. Its extra marks must form a separated top-face pattern.
+    const rimCandidates = cameraTilt > 0
+      ? smallCandidates.filter((bounds) => !detected.some((die) => overlaps(bounds, die))) : [];
+    if (rimCandidates.length) {
+      const detail = createDiceMasks(cv, frame, cameraTilt, own, "rim");
+      for (const mask of [detail.binary, detail.local]) {
+        if (!mask) continue;
+        addReadings(readDiceMask(cv, mask, cameraTilt, undefined, "rim").filter((die) =>
+          rimCandidates.some((bounds) => die.value > bounds.pipCount && sameRimTop(bounds, die)),
+        ));
       }
     }
     return detected.sort((a, b) => a.x - b.x || a.y - b.y);

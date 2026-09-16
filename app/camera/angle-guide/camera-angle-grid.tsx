@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { projectAngleGrid } from "./grid-projection";
 import styles from "./camera-angle-grid.module.css";
 
 interface CameraAngleGridProps {
@@ -9,8 +9,10 @@ interface CameraAngleGridProps {
 
 /** Presentation only; the guide never draws into captured camera frames. */
 export default function CameraAngleGrid({ angle, dragging, onFadeComplete }: CameraAngleGridProps) {
-  const patternId = useId();
-  const depth = Math.cos(angle * Math.PI / 180);
+  const { columns, rows } = projectAngleGrid(angle);
+  const path = [...columns, ...rows].map(({ x1, y1, x2, y2 }) =>
+    `M ${x1} ${y1} L ${x2} ${y2}`,
+  ).join(" ");
 
   return (
     <svg
@@ -22,21 +24,10 @@ export default function CameraAngleGrid({ angle, dragging, onFadeComplete }: Cam
       data-dragging={dragging}
       onAnimationEnd={onFadeComplete}
     >
-      {/* Repeat the projected cells beyond the viewport, then clip at its edges.
-          Uniform slice scaling keeps overhead cells square on wide/tall feeds. */}
-      <defs>
-        <pattern
-          id={patternId}
-          width="14"
-          height="14"
-          patternUnits="userSpaceOnUse"
-          patternTransform={`translate(50 50) scale(1 ${depth}) translate(-50 -50)`}
-        >
-          <path d="M 0 14 V 0 H 14" fill="none" stroke="black" strokeOpacity="0.4" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
-          <path d="M 0 14 V 0 H 14" fill="none" stroke="white" strokeOpacity="0.55" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-        </pattern>
-      </defs>
-      <rect width="100" height="100" fill={`url(#${patternId})`} />
+      {/* Project beyond the viewport, then clip at its edges. Uniform slice
+          scaling keeps overhead cells square on wide and tall camera feeds. */}
+      <path d={path} fill="none" stroke="black" strokeOpacity="0.4" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
+      <path d={path} fill="none" stroke="white" strokeOpacity="0.55" strokeWidth="1" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 }
