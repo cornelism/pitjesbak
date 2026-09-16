@@ -57,7 +57,13 @@ export function readDieCrops(cv: typeof OpenCv, options: CropReading): { dice: D
     if (matches.length !== 1) continue;
     const match = matches[0];
     if (refined.some((die) => die !== existing && overlapsDie(die, match))) continue;
-    batch.crops[batch.crops.length - 1] = { ...batch.crops[batch.crops.length - 1], cropValue: match.value, used: true };
+    // Crop thresholding can open rim pips onto the background and leave a
+    // plausible subset (one row of a six looks like three). Fewer enclosed
+    // pips do not invalidate an already validated overview pattern. Retain
+    // the conflicting count for diagnostics without applying it to the roll.
+    const used = !existing || match.value >= existing.value;
+    batch.crops[batch.crops.length - 1] = { ...batch.crops[batch.crops.length - 1], cropValue: match.value, used };
+    if (!used) continue;
     if (existing) refined[refined.indexOf(existing)] = { ...existing, value: match.value };
     else refined.push(match);
   }

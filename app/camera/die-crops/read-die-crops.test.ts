@@ -62,3 +62,23 @@ it("saves crops without claiming extra detail when digital zoom uses the native 
   expect(result.batch.crops).toHaveLength(1);
   expect(result.batch.crops[0].used).toBe(false);
 });
+
+it.each([
+  [6, 3],
+  [6, 4],
+  [5, 4],
+  [3, 1],
+] as const)("preserves a validated %i when crop thresholding reports only %i pips", (overviewValue, cropValue) => {
+  vi.mocked(detectDiceOpenCv).mockReturnValue([{ value: cropValue, x: 120, y: 120, width: 120, height: 90 }]);
+  const original = { ...die, value: overviewValue };
+  const result = readDieCrops(cv, { ...options(), dice: [original] });
+  expect(result.dice).toEqual([original]);
+  expect(result.batch.crops[0]).toMatchObject({ overviewValue, cropValue, used: false });
+});
+
+it("accepts a crop that corroborates the overview reading", () => {
+  vi.mocked(detectDiceOpenCv).mockReturnValue([{ value: 4, x: 120, y: 120, width: 120, height: 90 }]);
+  const result = readDieCrops(cv, options());
+  expect(result.dice).toEqual([die]);
+  expect(result.batch.crops[0]).toMatchObject({ overviewValue: 4, cropValue: 4, used: true });
+});

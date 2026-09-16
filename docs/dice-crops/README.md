@@ -37,6 +37,10 @@ stay on disk and are excluded from normal staging, including `git add .`.
   640-pixel frame does not restore missing detail.
 - A result must correspond to the located face. No match or competing matches
   preserve the overview result. Local contrast is retried only after no match.
+- A crop may confirm a reading or recover additional pips, but a lower count
+  preserves the validated overview reading: thresholding can erase rim pips.
+  The rejected count is saved as `cropValue` with `used: false`. This conservative
+  rule also means crops cannot correct an overview overcount yet.
 - Refined values enter the existing stabilization and confirmation logic.
 - A die that cannot be located at all in the overview cannot yet be recovered
   through this feature.
