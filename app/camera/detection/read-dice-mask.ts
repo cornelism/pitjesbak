@@ -1,11 +1,14 @@
 import type * as OpenCv from "@techstark/opencv-js";
 import type { DetectedDie } from "../dice-types";
 import { separateDice } from "./separate-dice";
-import { projectTopFace } from "./top-face";
+import { projectTopFace, type FaceBounds } from "./top-face";
 import { measurePips } from "./pip-contours";
 import { readDieValue } from "./read-die-value";
 
-export function readDiceMask(cv: typeof OpenCv, binary: OpenCv.Mat, cameraTilt: number): DetectedDie[] {
+export function readDiceMask(
+  cv: typeof OpenCv, binary: OpenCv.Mat, cameraTilt: number,
+  onMergedPips?: (bounds: FaceBounds, pipCount: number) => void,
+): DetectedDie[] {
   const width = binary.cols, height = binary.rows;
   const contours = new cv.MatVector();
   const hierarchy = new cv.Mat();
@@ -36,6 +39,11 @@ export function readDiceMask(cv: typeof OpenCv, binary: OpenCv.Mat, cameraTilt: 
           const pips = measurePips(cv, contours, hierarchy, hierarchy.data32S[i * 4 + 2], bounds, area);
           const value = readDieValue(pips, face, bounds, area, tilt);
           if (value) detected.push({ value, x, y, width: w, height: h });
+          // Elongated marks can be adjacent pips joined by smoothing. Only
+          // retry that evidence; an arbitrary rejected mark is not a die.
+          else if (pips.length >= 2 && pips.some((pip) => pip.axisRatio < 0.5)) {
+            onMergedPips?.(bounds, pips.length);
+          }
         } finally {
           silhouette.delete();
         }

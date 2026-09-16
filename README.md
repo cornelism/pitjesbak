@@ -134,6 +134,11 @@ A single centered pip can occupy up to 20% of the thresholded face, accounting
 for large one-face dots and tighter outlines under bright light. Individual pips
 on multi-pip faces retain the stricter 8.5% limit.
 
+When smoothing joins small pips into elongated marks on an unread face, the
+detector retries with gentler smoothing. The retry must match the same face,
+resolve additional separate pips, and pass the existing layout checks. It cannot
+replace an accepted reading or add detections outside those unresolved faces.
+
 Before selecting faces, the detector checks indented outlines for narrow
 connections between nearby dice. It opens a filled copy of the outline (shrinks
 then expands it) and applies the cut only if multiple substantial pieces remain

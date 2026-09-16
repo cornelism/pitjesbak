@@ -53,6 +53,8 @@ const wideSixFrame = loadCameraFrame("wide-dice-6-5-1.png");
 
 const shadowFrame = loadCameraFrame("shadow-dice-2-4-1.png");
 
+const distantSixFrame = loadCameraFrame("distant-six-dice-2-6-2.png");
+
 const sideFaceFrame = loadCameraFrame("side-face-dice-4-6-2.png");
 
 function cropNewRoll(x: number, y: number, width: number, height: number) {
@@ -110,6 +112,29 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it.each([45, 50])("reads the distant six in the 2, 6, 2 roll at %i degrees", (angle) => {
+    expect(detectDiceOpenCv(cv, distantSixFrame, angle).map((die) => die.value)).toEqual([2, 6, 2]);
+  });
+
+  it.each([0.8, 1.15])("reads the distant-six roll at exposure multiplier %s", (exposure) => {
+    const data = distantSixFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...distantSixFrame, data }, 45).map((die) => die.value)).toEqual([2, 6, 2]);
+  });
+
+  it.each([45, 50])("does not infer six when the distant pip columns are actually joined at %i degrees", (angle) => {
+    const data = new Uint8ClampedArray(distantSixFrame.data);
+    // Replace the light gaps in the raw image with dark ink. A retry must
+    // find six separate holes; elongated columns alone are insufficient.
+    for (const left of [308, 318]) {
+      for (let y = 5; y <= 18; y++) {
+        for (let x = left; x < left + 6; x++) {
+          data.set([20, 20, 20, 255], (y * distantSixFrame.width + x) * 4);
+        }
+      }
+    }
+    expect(detectDiceOpenCv(cv, { ...distantSixFrame, data }, angle).map((die) => die.value)).toEqual([2, 2]);
+  });
+
   it.each([45, 50])("reads 4, 6, 2 without counting the four's right-side pips at %i degrees", (angle) => {
     expect(detectDiceOpenCv(cv, sideFaceFrame, angle).map((die) => die.value)).toEqual([4, 6, 2]);
   });

@@ -13,6 +13,7 @@ export function createDiceMasks(
   frame: Pick<ImageData, "data" | "width" | "height">,
   cameraTilt: number,
   own: OwnCvResource,
+  smoothing: "standard" | "gentle" = "standard",
 ): { binary: OpenCv.Mat; local: OpenCv.Mat | null } {
   const { width, height, data } = frame;
   const source = own(cv.matFromArray(height, width, cv.CV_8UC4, data));
@@ -20,7 +21,9 @@ export function createDiceMasks(
   const binary = own(new cv.Mat());
   let local: OpenCv.Mat | null = null;
   cv.cvtColor(source, gray, cv.COLOR_RGBA2GRAY);
-  cv.GaussianBlur(gray, gray, new cv.Size(3, 3), 0);
+  // Gentle smoothing preserves thin light gaps between distant pips when a
+  // candidate could not be read with the standard noise suppression.
+  cv.GaussianBlur(gray, gray, new cv.Size(3, 3), smoothing === "gentle" ? 0.5 : 0);
   const threshold = cv.threshold(gray, binary, 0, 255, cv.THRESH_BINARY | cv.THRESH_OTSU);
   // Preserve narrow light rims around small, foreshortened pips. At the
   // unadjusted Otsu threshold those holes can merge with the background.

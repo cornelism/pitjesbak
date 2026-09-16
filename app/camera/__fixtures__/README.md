@@ -1,5 +1,19 @@
 # Real camera fixtures
 
+## distant-six-dice-2-6-2.png
+
+- User-provided raw camera frame `dice-camera-frame (37).png`, saved unchanged
+  at 640 × 360 pixels on 2026-09-16.
+- Manually read top faces, ordered left to right by die bounds: **2, 6, 2**
+  (total **10**). The distant six is near the top edge, around `(316, 15)`.
+- Standard smoothing merges its six small pips into two elongated columns.
+  A gentle-smoothing retry recovers the six individual holes, requiring the
+  same face bounds, more separate pips, and a valid pip layout. Previously
+  accepted readings retain priority.
+- Tests cover 45° and 50° and exposure multipliers 0.8 and 1.15. Negative
+  cases join the columns in the source pixels and ensure no six is inferred.
+- Angles are test settings, not a measured physical camera angle.
+
 ## side-face-dice-4-6-2.png
 
 - User-provided raw camera frame `dice-camera-frame (30).png`, saved unchanged
