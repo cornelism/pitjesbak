@@ -96,6 +96,20 @@ describe("readSeparatedTop", () => {
     expect(readSeparatedTop(pips, 100, 100)).toBeNull();
   });
 
+  it("keeps a large side mark when checking the gap below the top", () => {
+    const pips: Pip[] = [...projectedFace(6), { point: [50, 36], area: 80 }];
+    expect(readSeparatedTop(pips, 100, 100, 12)).toBeNull();
+  });
+
+  it("reads six above a distinctly separated large side mark", () => {
+    const pips: Pip[] = [...projectedFace(6), { point: [50, 65], area: 80 }];
+    expect(readSeparatedTop(pips, 100, 100, 12)).toBe(6);
+  });
+
+  it("rejects uniformly oversized top pips", () => {
+    expect(readSeparatedTop(projectedFace(6), 100, 100, 8)).toBeNull();
+  });
+
   it("rejects an upper cluster with an oversized mark", () => {
     const pips = projectedFace(4);
     pips[0].area = 90;

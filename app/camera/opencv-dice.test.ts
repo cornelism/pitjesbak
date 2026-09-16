@@ -66,6 +66,12 @@ const distanceLiveFrame = { width: distanceLivePng.width, height: distanceLivePn
 const widePng = PNG.sync.read(readFileSync(new URL("./__fixtures__/wide-dice-1-2-1.png", import.meta.url)));
 const wideFrame = { width: widePng.width, height: widePng.height, data: new Uint8ClampedArray(widePng.data) };
 
+const wideSixPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/wide-dice-6-5-1.png", import.meta.url)));
+const wideSixFrame = { width: wideSixPng.width, height: wideSixPng.height, data: new Uint8ClampedArray(wideSixPng.data) };
+
+const shadowPng = PNG.sync.read(readFileSync(new URL("./__fixtures__/shadow-dice-2-4-1.png", import.meta.url)));
+const shadowFrame = { width: shadowPng.width, height: shadowPng.height, data: new Uint8ClampedArray(shadowPng.data) };
+
 function cropNewRoll(x: number, y: number, width: number, height: number) {
   const data = new Uint8ClampedArray(width * height * 4);
   for (let row = 0; row < height; row++) {
@@ -121,6 +127,19 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it.each([45, 50])("does not count a shadow as a fourth die at %i degrees", (angle) => {
+    expect(detectDiceOpenCv(cv, shadowFrame, angle).map((die) => die.value)).toEqual([2, 4, 1]);
+  });
+
+  it.each([45, 50])("reads the wide six with a merged side mark at %i degrees", (angle) => {
+    expect(detectDiceOpenCv(cv, wideSixFrame, angle).map((die) => die.value)).toEqual([6, 5, 1]);
+  });
+
+  it.each([0.8, 1.15])("reads the wide 6, 5, 1 roll at exposure multiplier %s", (exposure) => {
+    const data = wideSixFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...wideSixFrame, data }, 45).map((die) => die.value)).toEqual([6, 5, 1]);
+  });
+
   it.each([45, 50])("reads the outer dice without their side pips at %i degrees", (angle) => {
     expect(detectDiceOpenCv(cv, wideFrame, angle).map((die) => die.value)).toEqual([1, 2, 1]);
   });

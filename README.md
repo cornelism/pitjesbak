@@ -121,6 +121,12 @@ further Otsu splits isolate its brighter pixels, stopping if the threshold canno
 increase. A rejected wide cube can also yield a top one when its upper pip is
 clearly separated and its ellipse differs from at least two lower side marks.
 This fallback rejects coplanar pips and requires a centered, foreshortened top pip.
+Separated top clusters also work on wide cubes when their height exceeds the
+expected top-face projection. Large side marks remain part of the gap check.
+If a larger matching pattern overlaps another mark, the detector rejects the
+ambiguous cluster instead of trying a smaller subset.
+Outlines taller than 1.6 times their width are rejected as implausible upright
+cubes, preventing long shadow fragments with small holes from becoming dice.
 A single centered pip can occupy up to 20% of the thresholded face, accounting
 for large one-face dots and tighter outlines under bright light. Individual pips
 on multi-pip faces retain the stricter 8.5% limit.

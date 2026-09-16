@@ -108,6 +108,9 @@ function readDiceMask(cv: typeof OpenCv, binary: OpenCv.Mat, cameraTilt: number)
         const area = cv.contourArea(contour);
         const { x, y, width: w, height: h } = bounds;
         if (area < 225 || area > width * height * 0.3 || w / h < 0.45 || w / h > 1.8 || area / (w * h) < 0.38) continue;
+        // An upright cube projects to at most sqrt(2) times its width in
+        // height. Allow rounded/noisy edges, but reject long shadow fragments.
+        if (h > w * 1.6) continue;
         if (x === 0 || y === 0 || x + w >= width || y + h >= height) continue;
 
         const silhouette = cv.Mat.zeros(height, width, cv.CV_8UC1);
@@ -118,6 +121,9 @@ function readDiceMask(cv: typeof OpenCv, binary: OpenCv.Mat, cameraTilt: number)
           // If thresholding already removed those sides, keep the complete face
           // instead of cutting another strip off its bottom (six would become four).
           const completeFace = tilt === 0 || h <= w;
+          // A wide cube can still expose sides. Require extra height beyond
+          // the projected top before allowing a separated-cluster fallback.
+          const visibleSides = tilt > 0 && h > w * Math.cos(tilt) + Math.max(2, w * 0.1);
           // A square rotated on the table has equal X/Y extents. Its projected
           // top depth is width*cos(tilt); the remaining height is the side face.
           // Subtract that vertical extrusion from EACH column's lower boundary.
@@ -182,8 +188,8 @@ function readDiceMask(cv: typeof OpenCv, binary: OpenCv.Mat, cameraTilt: number)
           // The one-pip fallback additionally requires ellipse evidence that
           // the lower marks belong to different planes, not one complete face.
           const value = validatedCount
-            ?? (tilt > 0 && !completeFace
-              ? readSeparatedTop(allPips.filter((pip) => pip.area / area <= 0.085), w, h) : null)
+            ?? (visibleSides
+              ? readSeparatedTop(allPips, w, h, area * 0.085) : null)
             ?? (tilt > 0 ? readIsolatedTopOne(allPips, w, h) : null);
           if (value) detected.push({ value, x, y, width: w, height: h });
         } finally {

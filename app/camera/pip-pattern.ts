@@ -81,24 +81,25 @@ function matchesAffinePattern(points: readonly Point[], count: 4 | 5 | 6): boole
     && actual.every((distance, i) => Math.abs(distance - expected[i]) <= 0.09);
 }
 
-export function readSeparatedTop(pips: readonly Pip[], width: number, height: number): DieValue | null {
+export function readSeparatedTop(pips: readonly Pip[], width: number, height: number, maxPipArea = Infinity): DieValue | null {
   const ordered = [...pips].sort((a, b) => a.point[1] - b.point[1]);
   for (const count of [6, 5, 4] as const) {
     if (ordered.length < count) continue;
     const face = ordered.slice(0, count);
     const lowest = face[count - 1].point[1];
     const largestArea = Math.max(...face.map((pip) => pip.area));
-    if (!hasConsistentPipSizes(face)) continue;
-    // Require a distinct upper cluster, separated from side pips by at least
-    // a pip radius. Never pick an arbitrary subset from overlapping faces.
-    if (ordered[count] && ordered[count].point[1] - lowest < 1.5 * Math.sqrt(largestArea / Math.PI)) continue;
+    if (!hasConsistentPipSizes(face) || largestArea > maxPipArea) continue;
     const points = face.map((pip) => pip.point);
     const xs = points.map(([x]) => x);
     const cy = points.reduce((sum, [, y]) => sum + y, 0) / count;
     const cx = xs.reduce((sum, x) => sum + x, 0) / count;
     if (lowest > height * 0.6 || cy > height * 0.4 || Math.abs(cx / width - 0.5) > 0.18) continue;
     if (Math.max(...xs) - Math.min(...xs) < width * 0.3) continue;
-    if (matchesAffinePattern(points, count)) return count;
+    if (!matchesAffinePattern(points, count)) continue;
+    // Once a larger layout matches, an overlapping side mark makes the face
+    // ambiguous. Do not retry a smaller subset (six could become four).
+    if (ordered[count] && ordered[count].point[1] - lowest < 1.5 * Math.sqrt(largestArea / Math.PI)) return null;
+    return count;
   }
   return null;
 }

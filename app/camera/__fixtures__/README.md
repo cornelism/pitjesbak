@@ -1,5 +1,28 @@
 # Real camera fixtures
 
+## shadow-dice-2-4-1.png
+
+- Captured on 2026-09-16 directly from the browser video at 640 × 360 pixels,
+  digital zoom **1×**, angle control **50°**.
+- Manually read top faces: **2, 4, 1** (total **7**).
+- Local thresholding creates a narrow shadow fragment with a small enclosed
+  hole, previously reported as an extra one. Its height is about 1.77 times
+  its width, beyond an upright cube's projection even with edge tolerance.
+- Tests reject the extra detection at both 45° and 50°.
+
+## wide-dice-6-5-1.png
+
+- Captured on 2026-09-16 directly from the browser video with **Save camera frame**.
+- Unannotated 640 × 360 pixels, digital zoom **1×**, angle control **45°**.
+- Manually read top faces from left to right: **6, 5, 1** (total **12**).
+- The local mask contains all six top pips and a large merged side mark, but the
+  six's cube is wider than it is tall. The old whole-face shortcut rejected it.
+- Extra silhouette height beyond the projected top now permits separated-top
+  validation. Large side marks still participate in the separation check; only
+  the selected top pips must satisfy the multi-pip area limit.
+- Tests cover 45° and 50° and exposure changes. The darker case prevents reading
+  four from an incomplete six in a mask that contains only the top face.
+
 ## wide-dice-1-2-1.png
 
 - Captured on 2026-09-16 directly from the browser video with **Save camera frame**.
