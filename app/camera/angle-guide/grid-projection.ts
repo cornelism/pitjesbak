@@ -1,3 +1,5 @@
+import { MAX_CAMERA_ANGLE } from "../camera-angle";
+
 interface GridLine {
   x1: number;
   y1: number;
@@ -7,9 +9,10 @@ interface GridLine {
 
 const CENTER = 50;
 const CELL_SIZE = 14;
-// Illustrative pinhole camera: a 100-unit focal length in a 100-unit viewport
-// gives a ~53° field of view. This is not calibration of the physical camera.
-const FOCAL_LENGTH = 100;
+// Illustrative pinhole camera: a 150-unit focal length in a 100-unit viewport
+// gives a ~37° field of view, keeping the horizon outside the frame at 70°.
+// This is not calibration of the physical camera.
+const FOCAL_LENGTH = 150;
 
 function gridCoordinates(min: number, max: number): number[] {
   const first = Math.floor(min / CELL_SIZE);
@@ -21,9 +24,9 @@ function gridCoordinates(min: number, max: number): number[] {
  * Camera distance equals focal length, so center-cell width stays constant.
  */
 export function projectAngleGrid(angle: number): { columns: GridLine[]; rows: GridLine[] } {
-  const tilt = (Number.isFinite(angle) ? Math.max(0, Math.min(60, angle)) : 0) * Math.PI / 180;
+  const tilt = (Number.isFinite(angle) ? Math.max(0, Math.min(MAX_CAMERA_ANGLE, angle)) : 0) * Math.PI / 180;
   const cos = Math.cos(tilt), sin = Math.sin(tilt);
-  // Perspective scale at each screen row. At 60° the horizon remains above
+  // Perspective scale at each screen row. At 70° the horizon remains above
   // the viewport, so all inverse projections are finite and in front of it.
   const scaleAtRow = (row: number) => 1 + (row - CENTER) * Math.tan(tilt) / FOCAL_LENGTH;
   const farScale = scaleAtRow(0), nearScale = scaleAtRow(100);

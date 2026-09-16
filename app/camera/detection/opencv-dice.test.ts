@@ -53,6 +53,8 @@ const wideSixFrame = loadCameraFrame("wide-dice-6-5-1.png");
 
 const shadowFrame = loadCameraFrame("shadow-dice-2-4-1.png");
 
+const nearbyFivesFrame = loadCameraFrame("nearby-dice-5-5-2.png");
+
 const farFiveFrame = loadCameraFrame("far-five-dice-2-5-2.png");
 
 const distantRollFrame = loadCameraFrame("distant-dice-4-3-2.png");
@@ -76,7 +78,7 @@ function cropNewRoll(x: number, y: number, width: number, height: number) {
 
 // Ray-cast an actual cube, including pips on two visible side faces. This fixture
 // is independent of the detector's silhouette-based top-face calculation.
-function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue, DieValue] = [1, 5]) {
+function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue, DieValue] = [1, 5], cameraAngle = 45) {
   const width = 240, height = 200, half = 30;
   const data = new Uint8ClampedArray(width * height * 4);
   const layouts = [
@@ -85,7 +87,7 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
     [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]],
     [[-1, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [1, 1]],
   ];
-  const tilt = Math.PI / 4;
+  const tilt = cameraAngle * Math.PI / 180;
   const direction = [-Math.sin(tilt) * Math.sin(yaw), -Math.sin(tilt) * Math.cos(yaw), -Math.cos(tilt)];
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -120,6 +122,22 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it.each([45, 50, 65, 70])("reads the nearby 5, 5, 2 roll at %i degrees", (angle) => {
+    expect(detectDiceOpenCv(cv, nearbyFivesFrame, angle).map((die) => die.value)).toEqual([5, 5, 2]);
+  });
+
+  it.each([45, 70].flatMap((angle) => [0.8, 1.15].map((exposure) => ({ angle, exposure }))))(
+    "reads the nearby fives at $angle degrees and exposure $exposure", ({ angle, exposure }) => {
+      const data = nearbyFivesFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+      expect(detectDiceOpenCv(cv, { ...nearbyFivesFrame, data }, angle).map((die) => die.value)).toEqual([5, 5, 2]);
+    },
+  );
+
+  it.each<DieValue>([1, 2, 6])("reads top face %i at the maximum 70-degree angle", (value) => {
+    const frame = renderCube(value, 0.4, [1, 5], 70);
+    expect(detectDiceOpenCv(cv, frame, 70).map((die) => die.value)).toEqual([value]);
+  });
+
   it.each([45, 50])("reads the far five in the 2, 5, 2 roll at %i degrees", (angle) => {
     expect(detectDiceOpenCv(cv, farFiveFrame, angle).map((die) => die.value)).toEqual([2, 5, 2]);
   });

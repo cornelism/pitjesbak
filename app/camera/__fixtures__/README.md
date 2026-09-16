@@ -1,5 +1,21 @@
 # Real camera fixtures
 
+## nearby-dice-5-5-2.png
+
+- User-provided raw camera frame `dice-camera-frame (44).png`, saved unchanged
+  at 640 × 360 pixels on 2026-09-16.
+- Manually read top faces from left to right: **5, 5, 2** (total **12**).
+- The two rear dice have bounding boxes sharing a 1 × 2 pixel corner, although
+  their top faces are distinct. Treating any box intersection as a duplicate
+  suppressed the rear two. Duplicate detection now requires substantial overlap.
+- At steep angle settings, the small-face retry also rejected the middle five
+  and rear two when sides were visible. Those candidates now use the usual strict
+  projected pattern or separated-top checks, without relaxed pixel tolerances.
+- Tests cover 45°/50°/65°/70° and exposure multipliers 0.8/1.15 at 45° and 70°.
+  Unit tests cover overlap symmetry and resolution scaling, strict top pairs,
+  and separating a top five from a larger side pip.
+- Angles are test settings, not a measured physical camera angle.
+
 ## far-five-dice-2-5-2.png
 
 - User-provided raw camera frame `dice-camera-frame (42).png`, saved unchanged
@@ -28,7 +44,7 @@
   recovered count, and replacing an accepted value requires additional pips.
 - The small-face retry includes boundary pixels' half-cell extent and allows
   pixel-scale uncertainty in centering and separation. It never relaxes the
-  single-pip center check or uses side-face fallbacks.
+  single-pip center check or applies relaxed pixel tolerances to visible sides.
 - Tests cover 45°/50°, exposure multipliers 0.8/1.15, and removal of the
   three's middle pip: the remaining pair must read two, never an inferred three.
 - Angles are test settings, not a measured physical camera angle.

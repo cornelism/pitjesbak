@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import CameraAngleGrid from "./camera-angle-grid";
+import { MAX_CAMERA_ANGLE } from "../camera-angle";
 
 interface CameraAngleControlProps {
   angle: number;
@@ -31,7 +32,7 @@ export default function CameraAngleControl({ angle, onChange }: CameraAngleContr
         <input
           type="range"
           min="0"
-          max="60"
+          max={MAX_CAMERA_ANGLE}
           step="5"
           value={angle}
           aria-label="Camera angle from overhead"

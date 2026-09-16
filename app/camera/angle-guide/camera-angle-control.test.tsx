@@ -17,12 +17,13 @@ it("shows the guide on keyboard focus, updates with the angle, and removes it af
   render(<Control />);
   expect(screen.queryByTestId("camera-angle-grid")).toBeNull();
   const slider = screen.getByRole("slider", { name: "Camera angle from overhead" });
+  expect(slider.getAttribute("max")).toBe("70");
   fireEvent.focus(slider);
   const initial = screen.getByTestId("camera-angle-grid");
   expect(initial.getAttribute("data-dragging")).toBe("false");
 
-  fireEvent.change(slider, { target: { value: "60" } });
-  expect(screen.getByText("Camera angle: 60°")).toBeTruthy();
+  fireEvent.change(slider, { target: { value: "70" } });
+  expect(screen.getByText("Camera angle: 70°")).toBeTruthy();
   const updated = screen.getByTestId("camera-angle-grid");
   expect(updated).not.toBe(initial); // Restart the fade after each adjustment.
   expect(updated.querySelector("path")?.getAttribute("d"))

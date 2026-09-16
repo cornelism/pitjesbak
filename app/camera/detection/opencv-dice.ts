@@ -5,17 +5,7 @@ import { createDiceMasks } from "./dice-masks";
 import { readDiceMask } from "./read-dice-mask";
 import type { FaceBounds } from "./top-face";
 import { sameRimTop } from "./rim-pips";
-
-function overlaps(a: FaceBounds, b: FaceBounds): boolean {
-  return a.x < b.x + b.width && a.x + a.width > b.x
-    && a.y < b.y + b.height && a.y + a.height > b.y;
-}
-
-function sameFace(a: FaceBounds, b: FaceBounds): boolean {
-  const width = Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x));
-  const height = Math.max(0, Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y));
-  return width * height >= Math.max(a.width * a.height, b.width * b.height) * 0.7;
-}
+import { overlapsDie, sameFace } from "./face-overlap";
 
 /** OpenCV locates bright dice, isolates their top faces, and counts enclosed pips.
  * Pattern validation checks that count after the face has been selected.
@@ -37,13 +27,13 @@ export function detectDiceOpenCv(
     const detected = readDiceMask(cv, binary, cameraTilt, recordCandidate);
     function addReadings(readings: DetectedDie[]) {
       for (const die of readings) {
-        if (!detected.some((other) => overlaps(die, other))) detected.push(die);
+        if (!detected.some((other) => overlapsDie(die, other))) detected.push(die);
       }
     }
     // A second mask fills unread regions without replacing established values.
     if (local) addReadings(readDiceMask(cv, local, cameraTilt, recordCandidate));
 
-    const unresolved = candidates.filter((bounds) => !detected.some((die) => overlaps(bounds, die)));
+    const unresolved = candidates.filter((bounds) => !detected.some((die) => overlapsDie(bounds, die)));
     if (unresolved.length) {
       const detail = createDiceMasks(cv, frame, cameraTilt, own, "gentle");
       for (const mask of [detail.binary, detail.local]) {
@@ -57,7 +47,7 @@ export function detectDiceOpenCv(
       }
     }
     // Small contours can yield a plausible partial count even when the first
-    // pass succeeds. Only a complete top with additional measured pips may
+    // pass succeeds. Only a validated top with additional measured pips may
     // replace that count; never add a new region or choose a smaller subset.
     const smallCandidates = candidates.filter((candidate) => candidate.small);
     if (smallCandidates.length) {
@@ -67,7 +57,7 @@ export function detectDiceOpenCv(
         const readings = readDiceMask(cv, mask, cameraTilt, undefined, "small");
         for (const die of readings) {
           if (die.value < 2 || !smallCandidates.some((bounds) => die.value >= bounds.pipCount && sameFace(bounds, die))) continue;
-          const existing = detected.findIndex((other) => overlaps(die, other));
+          const existing = detected.findIndex((other) => overlapsDie(die, other));
           if (existing === -1) detected.push(die);
           else if (sameFace(detected[existing], die) && die.value > detected[existing].value) detected[existing] = die;
         }
@@ -76,7 +66,7 @@ export function detectDiceOpenCv(
     // Only unread slanted faces can use the rim retry; accepted values remain
     // authoritative. Its extra marks must form a separated top-face pattern.
     const rimCandidates = cameraTilt > 0
-      ? smallCandidates.filter((bounds) => !detected.some((die) => overlaps(bounds, die))) : [];
+      ? smallCandidates.filter((bounds) => !detected.some((die) => overlapsDie(bounds, die))) : [];
     if (rimCandidates.length) {
       const detail = createDiceMasks(cv, frame, cameraTilt, own, "rim");
       for (const mask of [detail.binary, detail.local]) {

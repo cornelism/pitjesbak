@@ -75,12 +75,12 @@ logging. The captured real-camera fixtures read **3, 5, 3**, **6, 1, 5**, and
 - Keep the camera upright (the visible sides should extend toward the bottom of
   the image).
 - Set **Camera angle** to the angle away from overhead: **0°** when looking straight
-  down, or approximately **45°** for the slanted setup. Adjust in 5° steps to match
+  down, or approximately **45°** for the slanted setup. Adjust up to **70°** in 5° steps to match
   the actual view. This setting resets to 45° when the camera restarts.
 - Focusing or adjusting **Camera angle** shows a transparent grid over the preview.
   It fills the camera view and clips at the preview edges. Its cells are square
   at 0°; at a slanted angle, columns converge and rows get closer toward the back
-  of the table. This perspective illustration assumes a roughly 53° field of view,
+  of the table. This perspective illustration assumes a roughly 37° field of view,
   rather than a calibrated camera lens. The guide stays
   visible while dragging, then fades after two seconds; keyboard changes bring it
   back. It illustrates the selected setting, rather than measuring the table, and
@@ -151,10 +151,12 @@ replace an accepted reading or add detections outside those unresolved faces.
 Faces up to 40 × 40 pixels also receive a small-face retry, since smoothing can
 turn a four into a plausible pair or merge a three into a single mark. This pass
 uses gentler smoothing and a lower threshold to retain thin light rims. It must
-match a previously located face, isolate its complete top without visible sides,
-and validate every selected pip. It may replace an accepted count only when it
+match a previously located face and validate every selected pip. Pixel-scale
+tolerances apply only to complete tops without visible sides. When sides are
+visible, the retry uses the usual strict projection or separated-top checks.
+It may replace an accepted count only when it
 recovers additional pips. Angled candidate filtering allows the projected area
-at the maximum supported 60° tilt; contours below the original 225-pixel floor
+at the maximum supported 70° tilt; contours below the original 225-pixel floor
 are deferred to a validated detail pass.
 
 If a small face is still unread, a final rim pass preserves unsmoothed pixels.
@@ -164,6 +166,10 @@ pips separate. At least three enclosed pips must already exist, and the recovere
 marks must form a four-, five-, or six-pip top separated from side marks. Raster
 area comparisons allow one pixel of uncertainty. This pass only fills previously
 located, unread faces; it cannot replace an accepted value.
+
+Duplicate suppression requires overlap covering at least a quarter of the smaller
+die box. Small shared corners between adjacent rounded dice do not discard a die.
+Detail matching remains stricter: at least 70% of the larger box must overlap.
 
 Before selecting faces, the detector checks indented outlines for narrow
 connections between nearby dice. It opens a filled copy of the outline (shrinks

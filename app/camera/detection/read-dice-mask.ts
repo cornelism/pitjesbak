@@ -5,6 +5,9 @@ import { projectTopFace, type FaceBounds } from "./top-face";
 import { measurePips } from "./pip-contours";
 import { readDieValue } from "./read-die-value";
 import { readRimTop } from "./rim-pips";
+import { MAX_CAMERA_ANGLE } from "../camera-angle";
+
+const MIN_PROJECTED_DEPTH = Math.cos(MAX_CAMERA_ANGLE * Math.PI / 180);
 
 export function readDiceMask(
   cv: typeof OpenCv, binary: OpenCv.Mat, cameraTilt: number,
@@ -18,10 +21,10 @@ export function readDiceMask(
     separateDice(cv, binary);
     cv.findContours(binary, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_NONE);
     const detected: DetectedDie[] = [];
-    const tilt = Math.max(0, Math.min(60, cameraTilt)) * Math.PI / 180;
-    // Admit candidates throughout the supported 0–60° range. Thresholding can
+    const tilt = Math.max(0, Math.min(MAX_CAMERA_ANGLE, cameraTilt)) * Math.PI / 180;
+    // Admit candidates throughout the supported 0–70° range. Thresholding can
     // shorten a tiny top further; reading still requires a validated detail pass.
-    const minimumArea = tilt > 0 ? 225 / 2 : 225;
+    const minimumArea = tilt > 0 ? 225 * MIN_PROJECTED_DEPTH : 225;
 
     for (let i = 0; i < contours.size(); i++) {
       if (hierarchy.data32S[i * 4 + 3] !== -1) continue;
@@ -30,7 +33,8 @@ export function readDiceMask(
         const bounds = cv.boundingRect(contour);
         const area = cv.contourArea(contour);
         const { x, y, width: w, height: h } = bounds;
-        if (area < minimumArea || area > width * height * 0.3 || w / h < 0.45 || w / h > (area < 225 ? 2 : 1.8) || area / (w * h) < 0.38) continue;
+        const maximumAspectRatio = area < 225 ? 1 / MIN_PROJECTED_DEPTH : Math.max(1.8, 1 / Math.cos(tilt));
+        if (area < minimumArea || area > width * height * 0.3 || w / h < 0.45 || w / h > maximumAspectRatio || area / (w * h) < 0.38) continue;
         // An upright cube projects to at most sqrt(2) times its width in
         // height. Allow rounded/noisy edges, but reject long shadow fragments.
         if (h > w * 1.6) continue;

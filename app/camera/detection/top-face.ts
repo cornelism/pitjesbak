@@ -19,7 +19,7 @@ export function projectTopFace(
   const { x, y, width: w, height: h } = bounds;
   const width = silhouette.cols;
   // A projected square top is no taller than it is wide for an upright
-  // camera. A full cube in our 0–60° range has additional vertical sides.
+  // camera. A full cube in our 0–70° range has additional vertical sides.
   // If thresholding already removed those sides, keep the complete face
   // instead of cutting another strip off its bottom (six would become four).
   const completeFace = tilt === 0 || h <= w;

@@ -24,8 +24,35 @@ describe("small-face validation", () => {
   it.each([
     { completeFace: false, visibleSides: false },
     { completeFace: true, visibleSides: true },
-  ])("rejects extra detail when the top is not isolated: %j", (geometry) => {
+  ])("keeps strict validation when the top is not isolated: %j", (geometry) => {
     expect(readDieValue(pips, { ...face, ...geometry }, bounds, 259, tilt, true)).toBeNull();
+  });
+
+  it.each([65, 70])("reads a strictly valid top pair above visible sides at %i degrees", (angle) => {
+    const radians = angle * Math.PI / 180;
+    const bounds = { x: 369, y: 93, width: 26, height: 16 };
+    const face: TopFace = {
+      mask: new Uint32Array(26 * 16).fill(1), completeFace: true, visibleSides: true,
+      rectify: ([x, y]) => [x / 25, y / (25 * Math.cos(radians))],
+    };
+    const pips: EllipticalPip[] = [[15, 6], [10.5, 2]].map(([x, y]) => ({
+      point: [x, y], area: 8, axisRatio: 0.5, angle: 90,
+    }));
+    expect(readDieValue(pips, face, bounds, 217, radians)).toBe(2);
+    expect(readDieValue(pips, face, bounds, 217, radians, true)).toBe(2);
+  });
+
+  it("separates the five's upper pattern from a larger side pip during a detail retry", () => {
+    const radians = 70 * Math.PI / 180;
+    const bounds = { x: 345, y: 107, width: 25, height: 17 };
+    const face: TopFace = {
+      mask: new Uint32Array(25 * 17).fill(1), completeFace: true, visibleSides: true,
+      rectify: ([x, y]) => [x / 24, y / (24 * Math.cos(radians))],
+    };
+    const pips: EllipticalPip[] = [[9, 6.5], [18.5, 5.5], [12, 4], [6, 2.5], [15.2, 1.4]]
+      .map(([x, y]) => ({ point: [x, y], area: 10, axisRatio: 0.6, angle: 90 }));
+    pips.push({ point: [17, 14], area: 40, axisRatio: 0.9, angle: 0 });
+    expect(readDieValue(pips, face, bounds, 246, radians, true)).toBe(5);
   });
 
   it("rejects an additional mark instead of selecting the matching three", () => {
