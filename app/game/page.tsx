@@ -1,91 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { DEFAULTS, PRIZE, RULES } from "../utils/constants";
-import { DiceRoll } from "../utils/types";
-import { calculateScore, isRollValid, roll } from "../utils";
-import { DialogConfirmDoubleUp } from "../components/dialogConfirmDoubleUp";
-import { Dice } from "../components/dice";
+import { DialogConfirmDoubleUp } from "./components/dialog-confirm-double-up";
+import { Dice } from "./components/dice";
+import { isRollValid } from "./scoring";
+import { useGame } from "./use-game";
 
-const {
-  DICE,
-  SCORE,
-  // GOAL,
-  MINIMUM_BANKING_SCORE,
-  MULTIPLIER,
-  POINTS_TO_CONFIRM,
-} = DEFAULTS;
-
-const { DOUBLE_UP, SAND } = RULES;
-
-export default function Home() {
-  const [dice, setDice] = useState<DiceRoll>(DICE);
-  const [isGameOver, setIsGameOver] = useState<boolean>(false);
-  const [score, setScore] = useState<number>(SCORE);
-  const [currentScore, setCurrentScore] = useState<number>(SCORE);
-  const [pointsToConfirm, setPointsToConfirm] =
-    useState<number>(POINTS_TO_CONFIRM);
-  const [multiplier, setMultiplier] = useState<number>(MULTIPLIER);
-  const [decidingToMultiply, setDecidingToMultiply] = useState<boolean>(false);
-
-  const needsConfirmation = useMemo(() => {
-    return pointsToConfirm > 0;
-  }, [pointsToConfirm]);
-
-  const hasBank = useMemo(() => {
-    return (
-      (score === 0 && currentScore >= MINIMUM_BANKING_SCORE) ||
-      (score >= MINIMUM_BANKING_SCORE && currentScore > 0)
-    );
-  }, [score, currentScore]);
-
-  const canTakePoints = useMemo(() => {
-    return hasBank && !needsConfirmation;
-  }, [hasBank, needsConfirmation]);
-
-  const rollTheDice = () => {
-    const newRoll = roll();
-    setDice(newRoll);
-
-    if (!isRollValid(newRoll)) {
-      gameOver();
-    } else {
-      if (DOUBLE_UP(newRoll)) {
-        setDecidingToMultiply(true);
-      }
-      if (SAND(newRoll)) {
-        setPointsToConfirm((pointsToConfirm + PRIZE.SAND) * multiplier);
-      } else {
-        const rollScore = calculateScore(newRoll);
-        setCurrentScore(
-          (currentScore + (rollScore + pointsToConfirm)) * multiplier
-        );
-        setPointsToConfirm(0);
-        setDecidingToMultiply(false);
-        setMultiplier(1);
-      }
-    }
-  };
-
-  const cashOut = () => {
-    setScore(score + currentScore);
-    setCurrentScore(0);
-    setMultiplier(MULTIPLIER);
-    // setDice(DICE);
-  };
-
-  const resetGame = () => {
-    setDice(DICE);
-    setIsGameOver(false);
-    setCurrentScore(SCORE);
-    setMultiplier(MULTIPLIER);
-    setPointsToConfirm(POINTS_TO_CONFIRM);
-  };
-
-  const gameOver = () => {
-    // resetGame();
-    setIsGameOver(true);
-  };
+export default function GamePage() {
+  const {
+    dice, isGameOver, score, currentScore, pointsToConfirm, multiplier,
+    decidingToMultiply, needsConfirmation, canTakePoints, setMultiplier,
+    rollTheDice, cashOut, resetGame,
+  } = useGame();
 
   return (
     <main className="flex items-center justify-center min-h-screen bg-(image:--carpet) bg-size-[450px] bg-center font-sans">

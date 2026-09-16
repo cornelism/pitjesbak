@@ -3,42 +3,15 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 import type * as OpenCv from "@techstark/opencv-js";
 import type { DetectedDie } from "./dice-types";
-import { cameraFrameSize } from "./frame-size";
-import { drawCameraFrame } from "./draw-camera-frame";
-import { detectDiceOpenCv } from "./opencv-dice";
-import { loadOpenCv } from "./opencv-runtime";
-import { createRollMotionTracker } from "./roll-motion";
-import { createRollTracker, RECOVERY_ATTEMPTS, RECOVERY_MATCHES, type RollTrackingState } from "./roll-tracker";
+import { cameraFrameSize } from "./capture/frame-size";
+import { drawCameraFrame } from "./capture/draw-camera-frame";
+import { detectDiceOpenCv } from "./detection/opencv-dice";
+import { loadOpenCv } from "./detection/opencv-runtime";
+import { createRollMotionTracker } from "./tracking/roll-motion";
+import { createRollTracker } from "./tracking/roll-tracker";
+import { drawMarkers, readingStatus } from "./components/reader-display";
 
 const FRAME_INTERVAL_MS = 160;
-
-function drawMarkers(
-  drawing: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  dice: readonly DetectedDie[],
-) {
-  drawing.clearRect(0, 0, width, height);
-  drawing.lineWidth = 2;
-  drawing.font = "bold 16px sans-serif";
-  for (const die of dice) {
-    drawing.strokeStyle = "#34d399";
-    drawing.strokeRect(die.x, die.y, die.width, die.height);
-    drawing.fillStyle = "#34d399";
-    drawing.fillRect(die.x, die.y, 22, 22);
-    drawing.fillStyle = "#052e16";
-    drawing.fillText(String(die.value), die.x + 6, die.y + 17);
-  }
-}
-
-function readingStatus(tracked: RollTrackingState, visibleCount: number, expectedCount: number): string {
-  if (tracked.recovering) {
-    return `Stabilizing dice · ${tracked.matchingAttempts}/${RECOVERY_ATTEMPTS} agreeing readings · need ${RECOVERY_MATCHES}`;
-  }
-  if (tracked.confirmedDice.length) return "Roll confirmed";
-  if (visibleCount === expectedCount) return `${visibleCount} dice visible · hold still to read`;
-  return `${visibleCount} of ${expectedCount} dice visible`;
-}
 
 /** Own the camera sampling loop, settings and confirmation display together. */
 export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>, zoom = 1, zoomRevision = 0) {

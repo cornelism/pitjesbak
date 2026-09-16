@@ -180,6 +180,29 @@ no images are uploaded. Recognition is heuristic and may need tuning against
 your camera and dice. Tests cover the captured camera image, exposure variations,
 ray-cast 3D cubes with side pips, and synthetic isolated faces.
 
+## Code structure
+
+The camera and game are independent features. Shared UI primitives live in
+`app/components/ui`; game-specific components and rules live in `app/game`.
+
+- `app/camera/capture`: camera permissions and track lifecycle (`use-camera`),
+  hardware/digital zoom, and the shared frame sizing/cropping used for detection
+  and downloads.
+- `app/camera/detection`: the OpenCV runtime and pixel-to-die pipeline.
+  `opencv-dice` coordinates `dice-masks` → `read-dice-mask` → `top-face` /
+  `pip-contours` → `read-die-value`. Pattern validators and touching-dice
+  separation stay within this feature. OpenCV memory is released explicitly.
+- `app/camera/tracking`: roll confirmation and motion detection, independent of
+  React and OpenCV. This layer decides when to freeze or release a reading.
+- `app/camera/components`: preview, reader controls, frame download, and marker
+  rendering. `use-dice-reader` coordinates sampling, detection, and tracking.
+- `app/game`: scoring and rule definitions, the `use-game` turn-state hook, and
+  game presentation. Camera recognition does not depend on game rules.
+
+Tests live beside the code they exercise. Raw camera regression images and their
+expected readings remain in `app/camera/__fixtures__`. Node-only OpenCV test setup
+is isolated under `detection/__test-helpers__`.
+
 ## Tests
 
 Run `npm test` for camera lifecycle, pixel recognition, and roll stability tests, or

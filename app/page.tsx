@@ -1,4 +1,4 @@
-import CameraPreview from "./components/camera-preview";
+import CameraPreview from "./camera/components/camera-preview";
 
 export default function Home() {
   return <CameraPreview />;
