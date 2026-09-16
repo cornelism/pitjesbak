@@ -47,6 +47,9 @@ describe("removal on the captured tray", () => {
     { file: "rim-ones-dice-4-1-1.png", angle: 70, values: [4, 1, 1],
       inside: [[150, 200], [400, 200], [320, 340], [225, 232], [269, 169]],
       outside: [[320, 356], [580, 330], [600, 300], [20, 300], [200, 50]] },
+    { file: "small-six-dice-3-5-6.png", angle: 70, values: [3, 5, 6],
+      inside: [[150, 200], [400, 200], [320, 340], [225, 115], [313, 120]],
+      outside: [[320, 356], [580, 330], [600, 300], [20, 300], [200, 50]] },
   ])("keeps the playing surface inside the tray in $file", ({ file, angle, values, inside, outside }) => {
     const png = PNG.sync.read(readFileSync(new URL(`../__fixtures__/${file}`, import.meta.url)));
     const frame = { width: png.width, height: png.height, data: new Uint8ClampedArray(png.data) };

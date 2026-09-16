@@ -84,6 +84,20 @@ export function detectDiceOpenCv(
           }
         }
       }
+      const unread = rimCandidates.filter((bounds) => !detected.some((die) => overlapsDie(bounds, die)));
+      if (unread.length) {
+        // Split weak bridges between dark pip centers inside an existing
+        // face. This retry only fills unread regions; it cannot relabel a die.
+        const source = own(cv.matFromArray(height, width, cv.CV_8UC4, data));
+        const gray = own(new cv.Mat());
+        cv.cvtColor(source, gray, cv.COLOR_RGBA2GRAY);
+        for (const mask of [detail.binary, detail.local]) {
+          if (!mask) continue;
+          addReadings(readDiceMask(cv, mask, cameraTilt, undefined, "rim", gray).filter((die) =>
+            unread.some((bounds) => die.value > bounds.pipCount && sameRimTop(bounds, die)),
+          ));
+        }
+      }
     }
     // Keep ellipse-based depth estimation last: an early plausible pair must
     // not prevent a detail/rim pass from recovering the other pips of a four.

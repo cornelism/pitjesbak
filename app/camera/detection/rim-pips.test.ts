@@ -40,6 +40,32 @@ function rimFace(variant: "five" | "missing" | "extra" | "sliver" | "flat" | "ou
 }
 
 describe("readRimTop", () => {
+  it.each(["bridge", "missing", "extra", "solid"] as const)("validates dark pip centers in a six with %s", (variant) => {
+    withCvResources((own) => {
+      const gray = own(new cv.Mat(40, 40, cv.CV_8UC1, new cv.Scalar(80)));
+      for (let y = 4; y < 32; y++) gray.data.fill(200, y * 40 + 4, y * 40 + 34);
+      const dots = [[11, 7], [25, 7], [11, 12], [25, 12], [11, 17], [25, 17]];
+      if (variant === "missing") dots.pop();
+      if (variant === "extra") dots.push([18, 12]);
+      for (const [x, y] of dots) {
+        for (let row = y - 1; row <= y + 1; row++) gray.data.fill(10, row * 40 + x - 1, row * 40 + x + 2);
+      }
+      for (let y = 9; y <= 10; y++) gray.data[y * 40 + 25] = variant === "solid" ? 10 : 60;
+      for (let y = 24; y < 29; y++) gray.data.fill(10, y * 40 + 14, y * 40 + 22);
+      const mask = own(new cv.Mat());
+      cv.threshold(gray, mask, 100, 255, cv.THRESH_BINARY);
+      const contours = own(new cv.MatVector()), hierarchy = own(new cv.Mat());
+      cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE);
+      const contour = own(contours.get(0));
+      const bounds = cv.boundingRect(contour);
+      const beforeGray = new Uint8Array(gray.data), beforeMask = new Uint8Array(mask.data);
+      expect(readRimTop(cv, mask, contour, bounds, 5, Math.PI / 4)).toBeNull();
+      expect(readRimTop(cv, mask, contour, bounds, 5, Math.PI / 4, gray)).toBe(variant === "bridge" ? 6 : null);
+      expect(gray.data).toEqual(beforeGray);
+      expect(mask.data).toEqual(beforeMask);
+    });
+  });
+
   it("reads five with two open rear notches without counting the front-side pip", () => {
     expect(rimFace("five")).toBe(5);
   });

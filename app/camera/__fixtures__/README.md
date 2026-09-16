@@ -320,6 +320,18 @@
 Expected values describe the visible top faces, independently of the detector.
 The new regression cases remain ordinary assertions so missed dice fail loudly.
 
+## small-six-dice-3-5-6.png
+
+- Provided on 2026-09-16 as `dice-camera-frame (51).png`, saved unchanged.
+- Raw 640 × 360 camera pixels, using the current **70°** setting.
+- Manually labelled top faces, left to right: **3, 5, 6** (total **14**).
+- Smoothing opened the small six's pips onto its outline, leaving no enclosed
+  pips and discarding the candidate. Later masks retained a weak bridge between
+  two pips. A final dark-center threshold separates those measured marks inside
+  the existing face; the full six-pip layout must still validate.
+- Tests cover 45–70°, exposure multipliers 0.8/1.15 at 70°, rejection of a derived
+  blank candidate, and independently labelled play-area points.
+
 ## rim-ones-dice-4-1-1.png
 
 - Provided on 2026-09-16 as `dice-camera-frame (50).png`, saved unchanged.

@@ -25,6 +25,7 @@ export function readRimThree(pips: readonly Pip[], width: number, height: number
 export function readRimTop(
   cv: typeof OpenCv, binary: OpenCv.Mat, contour: OpenCv.Mat,
   bounds: FaceBounds, enclosedPips: number, tilt = 0,
+  gray?: OpenCv.Mat,
 ) {
   if (enclosedPips < 2 || bounds.width > 40 || bounds.height > 40) return null;
   return withCvResources((own) => {
@@ -45,7 +46,13 @@ export function readRimTop(
     cv.erode(marks, interior, kernel, new cv.Point(-1, -1), 1, cv.BORDER_CONSTANT, new cv.Scalar(0));
     const region = own(binary.roi(new cv.Rect(x, y, width, height)));
     const dark = own(new cv.Mat());
-    cv.bitwise_not(region, dark);
+    if (gray) {
+      // Keep the located face silhouette while separating only the darkest
+      // pip centers. A weak gray bridge must not merge two measured pips.
+      const intensities = own(gray.roi(new cv.Rect(x, y, width, height)));
+      const threshold = cv.threshold(intensities, dark, 0, 255, cv.THRESH_BINARY_INV | cv.THRESH_OTSU);
+      cv.threshold(intensities, dark, threshold * 0.5, 255, cv.THRESH_BINARY_INV);
+    } else cv.bitwise_not(region, dark);
     cv.bitwise_and(marks, dark, marks);
 
     const labels = own(new cv.Mat()), stats = own(new cv.Mat()), centers = own(new cv.Mat());

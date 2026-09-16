@@ -14,6 +14,7 @@ export function readDiceMask(
   cv: typeof OpenCv, binary: OpenCv.Mat, cameraTilt: number,
   onCandidate?: (bounds: FaceBounds, pipCount: number, small?: boolean) => void,
   detail: "standard" | "small" | "rim" | "ellipse" = "standard",
+  pipIntensities?: OpenCv.Mat,
 ): DetectedDie[] {
   const width = binary.cols, height = binary.rows;
   const contours = new cv.MatVector();
@@ -47,21 +48,25 @@ export function readDiceMask(
           const face = projectTopFace(silhouette, bounds, tilt);
           if (!face) continue;
           const pips = measurePips(cv, contours, hierarchy, hierarchy.data32S[i * 4 + 2], bounds, area);
+          const smallTop = tilt > 0 && face.completeFace && w <= 40 && h <= 40 && area / (w * h) >= 0.45;
           // Tiny contours need the detail pass: smoothing can hide half a
           // four or merge a three into a plausible single pip.
           if (area < 225 && detail === "standard") {
-            if (pips.length) onCandidate?.(bounds, pips.length, true);
+            // Smoothing can open every hole onto the rim. Keep compact,
+            // filled top candidates for retries even with no enclosed pips;
+            // a later pass must still measure and validate the full pattern.
+            if (pips.length || smallTop) onCandidate?.(bounds, pips.length, true);
             continue;
           }
           const value = detail === "ellipse"
             ? (tilt > 0 && face.completeFace ? readEllipticalTop(pips, w, h, area * (pips.length === 1 ? MAX_SINGLE_PIP_RATIO : 0.085)) : null)
             : detail === "rim"
-            ? readRimTop(cv, binary, contour, bounds, pips.length, tilt)
+            ? readRimTop(cv, binary, contour, bounds, pips.length, tilt, pipIntensities)
             : readDieValue(pips, face, bounds, area, tilt, detail === "small");
           if (value) detected.push({ value, x, y, width: w, height: h });
           // At low resolution even a valid count may have merged or missing
           // pips. Retain unread complete single-pip faces for ellipse validation.
-          if (detail === "standard" && w <= 40 && h <= 40 && pips.length) {
+          if (detail === "standard" && w <= 40 && h <= 40 && (pips.length || smallTop)) {
             onCandidate?.(bounds, pips.length, true);
           } else if (!value && (pips.length >= 2 || (pips.length === 1 && face.completeFace))) {
             onCandidate?.(bounds, pips.length);

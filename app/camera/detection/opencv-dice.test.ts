@@ -68,6 +68,8 @@ const dimThreeFrame = loadCameraFrame("dim-dice-3-4-4.png");
 
 const distantSixFrame = loadCameraFrame("distant-six-dice-2-6-2.png");
 
+const smallSixFrame = loadCameraFrame("small-six-dice-3-5-6.png");
+
 const rimOnesFrame = loadCameraFrame("rim-ones-dice-4-1-1.png");
 
 const centerRollFrame = loadCameraFrame("center-dice-2-3-5.png");
@@ -129,6 +131,25 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
   }
   return { width, height, data };
 }
+
+describe("small six with open and merged pips", () => {
+  it("does not invent pips in a blank small face candidate", () => {
+    const data = new Uint8ClampedArray(smallSixFrame.data);
+    for (let y = 109; y < 149; y++) for (let x = 297; x < 330; x++) {
+      data.set([200, 200, 200, 255], (y * smallSixFrame.width + x) * 4);
+    }
+    expect(detectDiceOpenCv(cv, { ...smallSixFrame, data }, 70).map((die) => die.value)).toEqual([3, 5]);
+  });
+
+  it.each([45, 50, 55, 60, 65, 70])("reads 3, 5, 6 at %i degrees", (angle) => {
+    expect(detectDiceOpenCv(cv, smallSixFrame, angle).map((die) => die.value)).toEqual([3, 5, 6]);
+  });
+
+  it.each([0.8, 1.15])("reads the roll at 70 degrees and exposure %s", (exposure) => {
+    const data = smallSixFrame.data.map((value, i) => i % 4 === 3 ? value : value * exposure);
+    expect(detectDiceOpenCv(cv, { ...smallSixFrame, data }, 70).map((die) => die.value)).toEqual([3, 5, 6]);
+  });
+});
 
 describe("4, 1, 1 roll with a one near the rim", () => {
   it.each([45, 50, 55, 60, 65, 70])("reads all three top faces at %i degrees", (angle) => {
