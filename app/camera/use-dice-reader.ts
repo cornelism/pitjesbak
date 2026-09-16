@@ -1,15 +1,22 @@
 "use client";
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useEffectEvent, useRef, useState, type RefObject } from "react";
 import { startDiceReader } from "./dice-reader-session";
 
 /** React settings and display state; each settings change replaces the reader session. */
-export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>, zoom = 1, zoomRevision = 0) {
+export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>, zoom = 1, zoomRevision = 0, onDiceRemoved?: () => void) {
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const [expectedCount, setExpectedCount] = useState(3);
   const [cameraTilt, setCameraTilt] = useState(45);
   const [status, setStatus] = useState("Loading OpenCV…");
   const [lastRoll, setLastRoll] = useState("None yet");
+  const [diceRemoved, setDiceRemoved] = useState(false);
+  const notifyRemoval = useEffectEvent(() => {
+    setDiceRemoved(true);
+    setLastRoll("None yet");
+    console.log("[Dice removed]", { timestamp: new Date().toISOString() });
+    onDiceRemoved?.();
+  });
 
   useEffect(() => {
     const video = videoRef.current;
@@ -20,6 +27,8 @@ export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>, zoom
       video, overlay, expectedCount, cameraTilt, zoom,
       onReady: () => setLastRoll("None yet"),
       onStatus: setStatus,
+      onDiceRemoved: notifyRemoval,
+      onDiceVisible: () => setDiceRemoved(false),
       onRoll: (roll) => {
         console.log("[Dice roll]", {
           dice: roll,
@@ -52,6 +61,7 @@ export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>, zoom
     cameraTilt,
     status,
     lastRoll,
+    diceRemoved,
     changeCameraTilt,
     changeExpectedCount,
   };

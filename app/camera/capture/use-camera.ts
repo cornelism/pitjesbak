@@ -19,11 +19,13 @@ export function useCamera() {
   const [zoomPending, setZoomPending] = useState(false);
   const [zoomError, setZoomError] = useState<string | null>(null);
   const [zoomRevision, setZoomRevision] = useState(0);
+  const resetZoomRequested = useRef(false);
 
   const releaseCamera = useCallback(() => {
     sessionRef.current?.stop();
     // Session identity also invalidates pending startup and zoom responses.
     sessionRef.current = null;
+    resetZoomRequested.current = false;
   }, []);
 
   useEffect(() => releaseCamera, [releaseCamera]);
@@ -83,8 +85,13 @@ export function useCamera() {
     }
     setZoomPending(true);
     try {
-      const actual = await applyCameraZoom(state.track, value, zoom.step);
+      let actual = await applyCameraZoom(state.track, value, zoom.step);
       if (sessionRef.current !== session) return;
+      if (resetZoomRequested.current) {
+        resetZoomRequested.current = false;
+        actual = await applyCameraZoom(state.track, actual.min, actual.step);
+        if (sessionRef.current !== session) return;
+      }
       setZoom(actual);
       setZoomRevision((revision) => revision + 1);
     } catch {
@@ -93,13 +100,21 @@ export function useCamera() {
       setZoomRevision((revision) => revision + 1);
       setZoomError("Camera zoom is unavailable. Use digital zoom instead.");
     } finally {
-      if (sessionRef.current === session) setZoomPending(false);
+      if (sessionRef.current === session) {
+        resetZoomRequested.current = false;
+        setZoomPending(false);
+      }
     }
+  }
+
+  function resetZoom() {
+    if (zoomPending) resetZoomRequested.current = true;
+    else if (zoom.value !== zoom.min) void changeZoom(zoom.min);
   }
 
   return {
     state, videoRef, zoom, zoomPending, zoomError, zoomRevision,
-    startCamera, stopCamera, changeZoom,
+    startCamera, stopCamera, changeZoom, resetZoom,
     cropZoom: zoom.mode === "digital" ? zoom.value : 1,
   };
 }

@@ -7,6 +7,8 @@ import { loadOpenCv } from "./detection/opencv-runtime";
 import { createRollMotionTracker } from "./tracking/roll-motion";
 import { createRollTracker } from "./tracking/roll-tracker";
 import { drawMarkers, readingStatus } from "./components/reader-display";
+import { createDiceRemovalTracker } from "./removal/dice-removal";
+import { unzoomDice } from "./capture/frame-coordinates";
 
 const FRAME_INTERVAL_MS = 160;
 
@@ -19,14 +21,17 @@ interface ReaderSession {
   onReady: () => void;
   onStatus: (status: string) => void;
   onRoll: (roll: readonly DieValue[]) => void;
+  onDiceRemoved?: () => void;
+  onDiceVisible?: () => void;
 }
 
 /** Keep frame buffers, motion history, and frozen markers local to one session. */
 function createFrameReader(cv: typeof OpenCv, session: ReaderSession) {
   const { video, overlay, expectedCount, cameraTilt, zoom, onStatus, onRoll } = session;
   const frame = document.createElement("canvas");
-  const trackRoll = createRollTracker(expectedCount);
+  let trackRoll = createRollTracker(expectedCount);
   const motion = createRollMotionTracker();
+  const removal = createDiceRemovalTracker();
   let displayedMarkers: readonly DetectedDie[] | null = null;
 
   // Return false only when reading is unavailable and the loop must stop.
@@ -46,10 +51,23 @@ function createFrameReader(cv: typeof OpenCv, session: ReaderSession) {
       return false;
     }
 
-    drawCameraFrame(context, video, zoom);
-    const image = context.getImageData(0, 0, width, height);
+    // Removal checks the full field, including dice moved outside a digital crop.
+    drawCameraFrame(context, video);
+    const fullImage = context.getImageData(0, 0, width, height);
+    if (zoom > 1) drawCameraFrame(context, video, zoom);
+    const image = zoom > 1 ? context.getImageData(0, 0, width, height) : fullImage;
     const dice = detectDiceOpenCv(cv, image, cameraTilt);
-    const tracked = trackRoll(dice, performance.now(), motion.hasMoved(image));
+    const now = performance.now();
+    if (dice.length) session.onDiceVisible?.();
+    if (removal.update(fullImage, dice.length, now)) {
+      trackRoll = createRollTracker(expectedCount);
+      drawMarkers(drawing, width, height, []);
+      displayedMarkers = null;
+      onStatus("Dice removed · waiting for the next roll");
+      session.onDiceRemoved?.();
+      return true;
+    }
+    const tracked = trackRoll(dice, now, motion.hasMoved(image));
     const holdMarkers = tracked.confirmedDice.length > 0 || tracked.recovering;
     const markers = holdMarkers ? tracked.confirmedDice : dice;
     if (markers !== displayedMarkers) {
@@ -58,6 +76,7 @@ function createFrameReader(cv: typeof OpenCv, session: ReaderSession) {
     }
     if (tracked.roll) {
       motion.capture(image, tracked.confirmedDice);
+      removal.capture(fullImage, unzoomDice(tracked.confirmedDice, width, height, zoom));
       onRoll(tracked.roll);
     }
     onStatus(readingStatus(tracked, dice.length, expectedCount));

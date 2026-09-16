@@ -100,6 +100,26 @@ changing detection boxes alone cannot unlock a confirmed roll. Motion checks
 compare the image around each confirmed die and compensate for overall exposure
 changes. Confirmed markers are drawn once and held until the next throw.
 
+### Removing the dice
+
+After a confirmed roll, removal detection watches for movement and then waits
+for the table to clear. **All dice must remain absent for two continuous seconds**
+before the top-right **Dice removed** indicator appears and zoom returns to
+**1.0×**. Partial removal, unreadable pips, or a hand covering the dice cannot
+confirm absence on their own. A camera pause interrupts the timer.
+
+The separate removal feature compares camera pixels with the confirmed scene:
+the old dice positions must resemble the surrounding table, and other changed
+patches on the connected playing surface must clear. It follows table-colored
+pixels outward from the dice, so the tray rim separates the surface from the
+desk or player beyond it. Movement outside that surface does not block removal.
+It accounts for moderate exposure changes and disappearing
+die shadows. Digital zoom uses the full camera field for this check, including
+areas outside the crop. This is a conservative scene comparison, not a trained
+hand classifier; a changed camera position or obstructed table can delay removal.
+The indicator survives the zoom reset and clears when dice are recognized again.
+Removal clears the previous reading and logs `[Dice removed]` once per roll.
+
 The angle calculation estimates the projected top depth as `width × cos(angle)`.
 The remaining vertical extent is the visible side of the cube. The detector removes
 that side extent column by column before validating pips. If that estimate fails,
@@ -247,6 +267,9 @@ The camera and game are independent features. Shared UI primitives live in
   separation stay within this feature. OpenCV memory is released explicitly.
 - `app/camera/tracking`: roll confirmation and motion detection, independent of
   React and OpenCV. This layer decides when to freeze or release a reading.
+- `app/camera/removal`: clear-table pixel checks, the two-second all-dice absence
+  timer, and the removal indicator. The reader session feeds it full camera frames;
+  the camera capture hook handles the resulting zoom reset.
 - `app/camera/angle-guide`: angle control interactions, projected grid rendering,
   scoped animation styles, and tests. Its only inputs are the angle and a change
   callback; it has no dependency on camera capture, detection, or roll tracking.

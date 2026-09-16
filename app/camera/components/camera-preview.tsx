@@ -10,7 +10,7 @@ import { useCamera } from "../capture/use-camera";
 export default function CameraPreview() {
   const {
     state, videoRef, zoom, zoomPending, zoomError, zoomRevision, cropZoom,
-    startCamera, stopCamera, changeZoom,
+    startCamera, stopCamera, changeZoom, resetZoom,
   } = useCamera();
   const [aspectRatio, setAspectRatio] = useState(16 / 9);
   const isLive = state.status === "live";
@@ -42,7 +42,7 @@ export default function CameraPreview() {
           style={{ transform: `scale(${isLive ? cropZoom : 1})` }}
           className={`absolute inset-0 h-full w-full object-contain ${isLive ? "" : "invisible"}`}
         />
-        {isLive && <DiceReader videoRef={videoRef} zoom={cropZoom} zoomRevision={zoomRevision} />}
+        {isLive && <DiceReader videoRef={videoRef} zoom={cropZoom} zoomRevision={zoomRevision} onDiceRemoved={resetZoom} />}
         {!isLive && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
             <CameraOff className="h-9 w-9 text-zinc-500" aria-hidden="true" />

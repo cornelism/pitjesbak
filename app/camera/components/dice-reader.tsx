@@ -3,28 +3,32 @@
 import type { RefObject } from "react";
 import { useDiceReader } from "../use-dice-reader";
 import CameraAngleControl from "../angle-guide/camera-angle-control";
+import DiceRemovedIndicator from "../removal/dice-removed-indicator";
 
 interface DiceReaderProps {
   videoRef: RefObject<HTMLVideoElement | null>;
   zoom?: number;
   zoomRevision?: number;
+  onDiceRemoved?: () => void;
 }
 
-export default function DiceReader({ videoRef, zoom = 1, zoomRevision = 0 }: DiceReaderProps) {
+export default function DiceReader({ videoRef, zoom = 1, zoomRevision = 0, onDiceRemoved }: DiceReaderProps) {
   const {
     overlayRef,
     expectedCount,
     cameraTilt,
     status,
     lastRoll,
+    diceRemoved,
     changeCameraTilt,
     changeExpectedCount,
-  } = useDiceReader(videoRef, zoom, zoomRevision);
+  } = useDiceReader(videoRef, zoom, zoomRevision, onDiceRemoved);
 
   return (
     <div className="pointer-events-none absolute inset-0">
       <canvas ref={overlayRef} aria-hidden="true" className="absolute inset-0 h-full w-full object-contain" />
-      <div className="absolute left-3 top-3 z-10 max-w-[calc(100%-1.5rem)] rounded-lg bg-black/80 px-3 py-2 text-xs text-white">
+      {diceRemoved && <DiceRemovedIndicator />}
+      <div className={`absolute left-3 top-3 z-10 rounded-lg bg-black/80 px-3 py-2 text-xs text-white ${diceRemoved ? "max-w-[calc(100%-9rem)]" : "max-w-[calc(100%-1.5rem)]"}`}>
         <p>{status}</p>
         <p className="mt-1 text-emerald-300" role="status">Last roll: {lastRoll}</p>
       </div>
