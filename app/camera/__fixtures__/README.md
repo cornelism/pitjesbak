@@ -320,6 +320,19 @@
 Expected values describe the visible top faces, independently of the detector.
 The new regression cases remain ordinary assertions so missed dice fail loudly.
 
+## rim-ones-dice-4-1-1.png
+
+- Provided on 2026-09-16 as `dice-camera-frame (50).png`, saved unchanged.
+- Raw 640 × 360 camera pixels; the current camera-angle setting is **70°**.
+- Manually labelled top faces, left to right: **4, 1, 1** (total **6**).
+- Both ones were rejected by the configured face-depth projection. The final
+  ellipse fallback now checks a single pip against the complete face outline.
+- The rightmost die sits beside the rim. Its local background color included
+  the rail and caused the play-area mask to expand outside the felt. Surface
+  color consensus rejects this outlying reference.
+- Regressions cover 45–70°, exposure multipliers 0.8/1.15 at 70°, and independently
+  labelled felt and rail pixels.
+
 ## center-dice-2-3-5.png
 
 - Provided on 2026-09-16 as `dice-camera-frame (49).png`, saved unchanged.

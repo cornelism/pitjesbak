@@ -2,7 +2,7 @@ import type * as OpenCv from "@techstark/opencv-js";
 import type { DetectedDie } from "../dice-types";
 import { separateDice } from "./separate-dice";
 import { projectTopFace, type FaceBounds } from "./top-face";
-import { measurePips } from "./pip-contours";
+import { MAX_SINGLE_PIP_RATIO, measurePips } from "./pip-contours";
 import { readDieValue } from "./read-die-value";
 import { readRimTop } from "./rim-pips";
 import { readEllipticalTop } from "./elliptical-top";
@@ -54,16 +54,16 @@ export function readDiceMask(
             continue;
           }
           const value = detail === "ellipse"
-            ? (tilt > 0 && face.completeFace ? readEllipticalTop(pips, w, h, area * 0.085) : null)
+            ? (tilt > 0 && face.completeFace ? readEllipticalTop(pips, w, h, area * (pips.length === 1 ? MAX_SINGLE_PIP_RATIO : 0.085)) : null)
             : detail === "rim"
             ? readRimTop(cv, binary, contour, bounds, pips.length, tilt)
             : readDieValue(pips, face, bounds, area, tilt, detail === "small");
           if (value) detected.push({ value, x, y, width: w, height: h });
           // At low resolution even a valid count may have merged or missing
-          // pips. Larger faces only need a retry when several pips went unread.
+          // pips. Retain unread complete single-pip faces for ellipse validation.
           if (detail === "standard" && w <= 40 && h <= 40 && pips.length) {
             onCandidate?.(bounds, pips.length, true);
-          } else if (!value && pips.length >= 2) {
+          } else if (!value && (pips.length >= 2 || (pips.length === 1 && face.completeFace))) {
             onCandidate?.(bounds, pips.length);
           }
         } finally {

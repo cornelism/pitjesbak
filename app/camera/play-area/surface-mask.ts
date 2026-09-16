@@ -31,9 +31,16 @@ export function detectSurface(samples: readonly SurfaceSample[], regions: readon
   const step = 4, columns = Math.ceil(width / step), rows = Math.ceil(height / step);
   const eligible = new Uint8Array(columns * rows);
   const seeds = new Set<number>();
+  // A die beside the rail can sample more rail than felt. Use the largest
+  // agreement group of local colors, rather than admitting every local color.
+  const references = regions.flatMap(({ table }) => table ? [table] : []);
+  const groups = references.map((reference) => references.filter((other) =>
+    sameSurface(other, reference) && sameSurface(reference, other),
+  ));
+  const consensus = groups.reduce<SurfaceSample["color"][]>((largest, group) => group.length > largest.length ? group : largest, []);
   for (const sample of samples) {
     const index = Math.floor(sample.y / step) * columns + Math.floor(sample.x / step);
-    if (!regions.some(({ table }) => table && sameSurface(sample.color, table))) continue;
+    if (!consensus.some((table) => sameSurface(sample.color, table))) continue;
     eligible[index] = 1;
     if (regions.some(({ bounds: b }) => sample.x >= b.x - b.width * 0.6 && sample.x <= b.x + b.width * 1.6
       && sample.y >= b.y - b.height * 0.6 && sample.y <= b.y + b.height * 1.6)) seeds.add(index);

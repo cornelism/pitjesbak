@@ -10,6 +10,25 @@ const three: EllipticalPip[] = [[15.5, 17.6], [19.7, 10.6], [23.9, 3.9]].map(([x
 }));
 
 describe("readEllipticalTop", () => {
+  it.each([
+    { width: 36, height: 25, point: [16.7, 8.75] as const, area: 58.5, axisRatio: 0.64, angle: 93 },
+    { width: 53, height: 36, point: [29.2, 15.5] as const, area: 160.5, axisRatio: 0.66, angle: 116 },
+  ])("reads a centered one whose ellipse agrees with its $width × $height outline", ({ width, height, ...pip }) => {
+    expect(readEllipticalTop([pip], width, height, width * height * 0.2)).toBe(1);
+  });
+
+  it("rejects a single mark when its ellipse and face outline disagree", () => {
+    const pip: EllipticalPip = { point: [20, 10], area: 40, axisRatio: 0.5, angle: 90 };
+    expect(readEllipticalTop([pip], 40, 20, 80)).toBe(1);
+    expect(readEllipticalTop([pip], 40, 35, 80)).toBeNull();
+    expect(readEllipticalTop([pip], 40, 10, 80)).toBeNull();
+  });
+
+  it("still requires a centered single pip, without relaxing the centering tolerance", () => {
+    const pip: EllipticalPip = { point: [20, 4], area: 40, axisRatio: 0.5, angle: 90 };
+    expect(readEllipticalTop([pip], 40, 20, 80)).toBeNull();
+  });
+
   it("reads a pair from its measured pip ellipses", () => {
     expect(readEllipticalTop(pair, 36, 22, 45)).toBe(2);
   });

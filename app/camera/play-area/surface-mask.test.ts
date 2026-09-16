@@ -45,3 +45,20 @@ it("breaks a thin bridge to a matching patch beyond the playing surface", () => 
   expect(area.some(({ x, y }) => x === 62 && y === 62)).toBe(true);
   expect(area.some(({ x }) => x >= 132)).toBe(false);
 });
+
+it.each([false, true])("ignores a rail-colored sample beside an edge die (reversed: %s)", (reverse) => {
+  const samples = [];
+  for (let y = 2; y < 120; y += 4) for (let x = 2; x < 160; x += 4) {
+    const felt = x >= 20 && x < 140 && y >= 20 && y < 100;
+    samples.push({ x, y, color: felt ? [60, 80, 62] as const : [70, 75, 80] as const });
+  }
+  const regions = [
+    { table: [60, 80, 62] as const, bounds: { x: 40, y: 40, width: 20, height: 20 } },
+    { table: [55, 74, 57] as const, bounds: { x: 90, y: 40, width: 20, height: 20 } },
+    { table: [70, 75, 80] as const, bounds: { x: 125, y: 80, width: 20, height: 20 } },
+  ];
+  const area = detectSurface(samples, reverse ? regions.reverse() : regions, 160, 120);
+  expect(area.some(({ x, y }) => x === 70 && y === 50)).toBe(true);
+  expect(area.some(({ x, y }) => x === 130 && y === 90)).toBe(true);
+  expect(area.some(({ x, y }) => x < 20 || x >= 140 || y < 20 || y >= 100)).toBe(false);
+});

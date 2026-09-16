@@ -68,6 +68,8 @@ const dimThreeFrame = loadCameraFrame("dim-dice-3-4-4.png");
 
 const distantSixFrame = loadCameraFrame("distant-six-dice-2-6-2.png");
 
+const rimOnesFrame = loadCameraFrame("rim-ones-dice-4-1-1.png");
+
 const centerRollFrame = loadCameraFrame("center-dice-2-3-5.png");
 
 const edgeRollFrame = loadCameraFrame("edge-dice-3-6-6.png");
@@ -127,6 +129,17 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
   }
   return { width, height, data };
 }
+
+describe("4, 1, 1 roll with a one near the rim", () => {
+  it.each([45, 50, 55, 60, 65, 70])("reads all three top faces at %i degrees", (angle) => {
+    expect(detectDiceOpenCv(cv, rimOnesFrame, angle).map((die) => die.value)).toEqual([4, 1, 1]);
+  });
+
+  it.each([0.8, 1.15])("reads the roll at 70 degrees and exposure %s", (exposure) => {
+    const data = rimOnesFrame.data.map((value, i) => i % 4 === 3 ? value : value * exposure);
+    expect(detectDiceOpenCv(cv, { ...rimOnesFrame, data }, 70).map((die) => die.value)).toEqual([4, 1, 1]);
+  });
+});
 
 describe("centered 2, 3, 5 camera roll", () => {
   it.each([40, 45, 50, 55, 60, 65, 70])("reads the top faces at %i degrees", (angle) => {
