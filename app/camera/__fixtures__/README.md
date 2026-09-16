@@ -320,6 +320,18 @@
 Expected values describe the visible top faces, independently of the detector.
 The new regression cases remain ordinary assertions so missed dice fail loudly.
 
+## center-dice-2-3-5.png
+
+- Provided on 2026-09-16 as `dice-camera-frame (49).png`, saved unchanged.
+- Raw 640 × 360 camera pixels, without overlays or preprocessing.
+- User-confirmed camera angle setting: **70° away from overhead**.
+- Manually labelled top faces, left to right: **2, 3, 5** (total **10**).
+- Previously only the five was read at 70°: the configured projection compressed
+  the estimated top depth too far for the two and three. Their matching pip
+  ellipses provide an independent depth estimate after detail/rim retries.
+- Tests cover 40–70°, darker/brighter exposure at 45° and 70°, and the felt/rail
+  boundary at 70°. The front felt extends to approximately y=346 in this frame.
+
 ## edge-dice-3-6-6.png
 
 - Provided on 2026-09-16 as `dice-camera-frame (48).png`, saved unchanged.

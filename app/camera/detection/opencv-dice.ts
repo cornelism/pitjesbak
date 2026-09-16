@@ -85,6 +85,17 @@ export function detectDiceOpenCv(
         }
       }
     }
+    // Keep ellipse-based depth estimation last: an early plausible pair must
+    // not prevent a detail/rim pass from recovering the other pips of a four.
+    const remaining = candidates.filter((bounds) => !detected.some((die) => overlapsDie(bounds, die)));
+    if (cameraTilt > 0 && remaining.length) {
+      for (const mask of [binary, local]) {
+        if (!mask) continue;
+        addReadings(readDiceMask(cv, mask, cameraTilt, undefined, "ellipse").filter((die) =>
+          remaining.some((bounds) => die.value >= bounds.pipCount && sameFace(bounds, die)),
+        ));
+      }
+    }
     return detected.sort((a, b) => a.x - b.x || a.y - b.y);
   });
 }

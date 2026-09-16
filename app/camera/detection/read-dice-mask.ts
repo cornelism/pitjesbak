@@ -5,6 +5,7 @@ import { projectTopFace, type FaceBounds } from "./top-face";
 import { measurePips } from "./pip-contours";
 import { readDieValue } from "./read-die-value";
 import { readRimTop } from "./rim-pips";
+import { readEllipticalTop } from "./elliptical-top";
 import { MAX_CAMERA_ANGLE } from "../camera-angle";
 
 const MIN_PROJECTED_DEPTH = Math.cos(MAX_CAMERA_ANGLE * Math.PI / 180);
@@ -12,7 +13,7 @@ const MIN_PROJECTED_DEPTH = Math.cos(MAX_CAMERA_ANGLE * Math.PI / 180);
 export function readDiceMask(
   cv: typeof OpenCv, binary: OpenCv.Mat, cameraTilt: number,
   onCandidate?: (bounds: FaceBounds, pipCount: number, small?: boolean) => void,
-  detail: "standard" | "small" | "rim" = "standard",
+  detail: "standard" | "small" | "rim" | "ellipse" = "standard",
 ): DetectedDie[] {
   const width = binary.cols, height = binary.rows;
   const contours = new cv.MatVector();
@@ -52,7 +53,9 @@ export function readDiceMask(
             if (pips.length) onCandidate?.(bounds, pips.length, true);
             continue;
           }
-          const value = detail === "rim"
+          const value = detail === "ellipse"
+            ? (tilt > 0 && face.completeFace ? readEllipticalTop(pips, w, h, area * 0.085) : null)
+            : detail === "rim"
             ? readRimTop(cv, binary, contour, bounds, pips.length, tilt)
             : readDieValue(pips, face, bounds, area, tilt, detail === "small");
           if (value) detected.push({ value, x, y, width: w, height: h });
