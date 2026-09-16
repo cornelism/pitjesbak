@@ -53,6 +53,8 @@ const wideSixFrame = loadCameraFrame("wide-dice-6-5-1.png");
 
 const shadowFrame = loadCameraFrame("shadow-dice-2-4-1.png");
 
+const dimThreeFrame = loadCameraFrame("dim-dice-3-4-4.png");
+
 const distantSixFrame = loadCameraFrame("distant-six-dice-2-6-2.png");
 
 const sideFaceFrame = loadCameraFrame("side-face-dice-4-6-2.png");
@@ -112,6 +114,29 @@ function renderCube(value: DieValue, yaw: number, sideValues: readonly [DieValue
 }
 
 describe("OpenCV real-camera recognition", () => {
+  it.each([45, 50])("reads the dim 3, 4, 4 roll at %i degrees", (angle) => {
+    expect(detectDiceOpenCv(cv, dimThreeFrame, angle).map((die) => die.value)).toEqual([3, 4, 4]);
+  });
+
+  it.each([0.8, 1.15])("reads the dim 3, 4, 4 roll at exposure multiplier %s", (exposure) => {
+    const data = dimThreeFrame.data.map((channel, i) => i % 4 === 3 ? channel : channel * exposure);
+    expect(detectDiceOpenCv(cv, { ...dimThreeFrame, data }, 45).map((die) => die.value)).toEqual([3, 4, 4]);
+  });
+
+  it.each([45, 50])("does not invent the three's upper pip when it is absent at %i degrees", (angle) => {
+    const data = new Uint8ClampedArray(dimThreeFrame.data);
+    // Cover the upper pip with face-colored pixels. The two remaining pips
+    // must not trigger an inferred third pip or a smaller, off-center face.
+    for (let y = 29; y <= 37; y++) {
+      for (let x = 154; x <= 163; x++) {
+        if (Math.hypot(x - 158.5, y - 33) <= 4) {
+          data.set([180, 140, 135, 255], (y * dimThreeFrame.width + x) * 4);
+        }
+      }
+    }
+    expect(detectDiceOpenCv(cv, { ...dimThreeFrame, data }, angle).map((die) => die.value)).toEqual([4, 4]);
+  });
+
   it.each([45, 50])("reads the distant six in the 2, 6, 2 roll at %i degrees", (angle) => {
     expect(detectDiceOpenCv(cv, distantSixFrame, angle).map((die) => die.value)).toEqual([2, 6, 2]);
   });

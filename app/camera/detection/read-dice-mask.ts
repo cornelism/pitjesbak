@@ -7,7 +7,7 @@ import { readDieValue } from "./read-die-value";
 
 export function readDiceMask(
   cv: typeof OpenCv, binary: OpenCv.Mat, cameraTilt: number,
-  onMergedPips?: (bounds: FaceBounds, pipCount: number) => void,
+  onIncompleteFace?: (bounds: FaceBounds, pipCount: number) => void,
 ): DetectedDie[] {
   const width = binary.cols, height = binary.rows;
   const contours = new cv.MatVector();
@@ -39,10 +39,11 @@ export function readDiceMask(
           const pips = measurePips(cv, contours, hierarchy, hierarchy.data32S[i * 4 + 2], bounds, area);
           const value = readDieValue(pips, face, bounds, area, tilt);
           if (value) detected.push({ value, x, y, width: w, height: h });
-          // Elongated marks can be adjacent pips joined by smoothing. Only
-          // retry that evidence; an arbitrary rejected mark is not a die.
-          else if (pips.length >= 2 && pips.some((pip) => pip.axisRatio < 0.5)) {
-            onMergedPips?.(bounds, pips.length);
+          // Smoothing can join adjacent pips or open a thin rim to the
+          // background. Require multiple enclosed pips before a detail retry;
+          // the caller accepts it only if additional pips form a valid face.
+          else if (pips.length >= 2) {
+            onIncompleteFace?.(bounds, pips.length);
           }
         } finally {
           silhouette.delete();

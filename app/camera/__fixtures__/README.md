@@ -1,5 +1,18 @@
 # Real camera fixtures
 
+## dim-dice-3-4-4.png
+
+- User-provided raw camera frame `dice-camera-frame (38).png`, saved unchanged
+  at 640 × 360 pixels on 2026-09-16.
+- Manually read top faces from left to right: **3, 4, 4** (total **11**).
+- The upper pip of the distant three is close to its top edge. Standard
+  smoothing opens its thin light rim into the background, leaving only two
+  enclosed pips. Gentler smoothing recovers the third hole and a valid three.
+- The retry must recover additional pips on the same face. Tests at 45° and
+  50° and exposure multipliers 0.8/1.15 cover the original frame. Negative
+  cases cover the upper pip and require the incomplete face to stay unread.
+- Angles are test settings, not a measured physical camera angle.
+
 ## distant-six-dice-2-6-2.png
 
 - User-provided raw camera frame `dice-camera-frame (37).png`, saved unchanged

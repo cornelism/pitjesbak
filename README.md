@@ -134,8 +134,9 @@ A single centered pip can occupy up to 20% of the thresholded face, accounting
 for large one-face dots and tighter outlines under bright light. Individual pips
 on multi-pip faces retain the stricter 8.5% limit.
 
-When smoothing joins small pips into elongated marks on an unread face, the
-detector retries with gentler smoothing. The retry must match the same face,
+When a face has multiple enclosed pips but no valid reading, the detector retries
+with gentler smoothing. This can separate joined pips or preserve a thin light rim
+around a pip near the face edge. The retry must match the same face,
 resolve additional separate pips, and pass the existing layout checks. It cannot
 replace an accepted reading or add detections outside those unresolved faces.
 
