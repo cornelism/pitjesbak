@@ -9,6 +9,7 @@ import { useCamera } from "../capture/use-camera";
 import PlayAreaToggle from "../play-area/play-area-toggle";
 import SaveDieCrops from "../die-crops/save-die-crops";
 import type { DieCropBatch } from "../die-crops/types";
+import StabilizationToggle from "../tracking/stabilization-toggle";
 
 export default function CameraPreview() {
   const {
@@ -17,6 +18,7 @@ export default function CameraPreview() {
   } = useCamera();
   const [aspectRatio, setAspectRatio] = useState(16 / 9);
   const [showPlayArea, setShowPlayArea] = useState(false);
+  const [stabilizationEnabled, setStabilizationEnabled] = useState(true);
   const cropBatchRef = useRef<DieCropBatch | null>(null);
   const isLive = state.status === "live";
   const isRequesting = state.status === "requesting";
@@ -48,6 +50,7 @@ export default function CameraPreview() {
           className={`absolute inset-0 h-full w-full object-contain ${isLive ? "" : "invisible"}`}
         />
         {isLive && <DiceReader videoRef={videoRef} zoom={cropZoom} zoomRevision={zoomRevision} onDiceRemoved={resetZoom} showPlayArea={showPlayArea}
+          stabilizationEnabled={stabilizationEnabled}
           onCrops={process.env.NODE_ENV === "development" ? (batch) => { cropBatchRef.current = batch; } : undefined} />}
         {!isLive && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center">
@@ -82,12 +85,13 @@ export default function CameraPreview() {
             </label>
             {zoomError && <p role="alert" className="mt-2 text-sm text-amber-300">{zoomError}</p>}
             <div className="mt-3"><PlayAreaToggle checked={showPlayArea} onChange={setShowPlayArea} /></div>
+            <div className="mt-3"><StabilizationToggle checked={stabilizationEnabled} onChange={setStabilizationEnabled} /></div>
           </div>
         )}
         <p className="text-sm text-zinc-400">
           OpenCV reads light dice with dark pips on a darker surface. Keep the camera upright and the dice apart.
           Set Camera angle to 0° for overhead or about 45° for a slanted view.
-          Settled rolls are logged to the browser console.
+          Confirmed rolls are logged to the browser console.
         </p>
         <div role="status" aria-live="polite" className="text-sm text-zinc-300">
           {state.status === "error" ? (

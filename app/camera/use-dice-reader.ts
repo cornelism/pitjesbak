@@ -6,7 +6,7 @@ import type { PlayArea } from "./play-area/play-area";
 import type { DieCropBatch } from "./die-crops/types";
 
 /** React settings and display state; each settings change replaces the reader session. */
-export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>, zoom = 1, zoomRevision = 0, onDiceRemoved?: () => void, onCrops?: (batch: DieCropBatch | null) => void) {
+export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>, zoom = 1, zoomRevision = 0, onDiceRemoved?: () => void, onCrops?: (batch: DieCropBatch | null) => void, stabilizationEnabled = true) {
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const [expectedCount, setExpectedCount] = useState(3);
   const [cameraTilt, setCameraTilt] = useState(45);
@@ -28,7 +28,7 @@ export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>, zoom
     if (!video || !overlay) return;
 
     return startDiceReader({
-      video, overlay, expectedCount, cameraTilt, zoom,
+      video, overlay, expectedCount, cameraTilt, zoom, stabilizationEnabled,
       onReady: () => setLastRoll("None yet"),
       onStatus: setStatus,
       onCrops: notifyCrops,
@@ -44,7 +44,7 @@ export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>, zoom
         setLastRoll(roll.join(" · "));
       },
     });
-  }, [expectedCount, cameraTilt, videoRef, zoom, zoomRevision]);
+  }, [expectedCount, cameraTilt, videoRef, zoom, zoomRevision, stabilizationEnabled]);
 
   function resetReading() {
     setStatus("Looking for dice…");

@@ -10,7 +10,12 @@ vi.mock("../detection/opencv-runtime", () => ({ loadOpenCv: () => Promise.resolv
 
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
-it.each(["digital", "camera"])("confirms removal, keeps the badge and resets %s zoom to 1.0×", async (mode) => {
+it.each([
+  { mode: "digital", stabilizationEnabled: true },
+  { mode: "camera", stabilizationEnabled: true },
+  { mode: "digital", stabilizationEnabled: false },
+  { mode: "camera", stabilizationEnabled: false },
+])("confirms removal and resets $mode zoom with stabilization=$stabilizationEnabled", async ({ mode, stabilizationEnabled }) => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
   const log = vi.spyOn(console, "log").mockImplementation(() => {});
   const track = Object.assign(new EventTarget(), { stop: vi.fn() });
@@ -39,6 +44,9 @@ it.each(["digital", "camera"])("confirms removal, keeps the badge and resets %s 
   Object.defineProperties(video, { readyState: { value: 2 }, videoWidth: { value: 640 }, videoHeight: { value: 480 } });
   vi.mocked(detectDiceOpenCv).mockImplementation(() => video.style.transform === "scale(2)" ? crop(readings) : readings);
   await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Start camera" })); });
+  if (!stabilizationEnabled) {
+    await act(async () => { fireEvent.click(screen.getByRole("checkbox", { name: "Enable stabilization" })); });
+  }
   await act(async () => { fireEvent.change(screen.getByRole("slider", { name: "Camera zoom" }), { target: { value: mode === "digital" ? "2" : "4" } }); });
   const toggle = screen.getByRole<HTMLInputElement>("checkbox", { name: "Show play area" });
   expect(toggle.checked).toBe(false);
@@ -94,6 +102,7 @@ it.each(["digital", "camera"])("confirms removal, keeps the badge and resets %s 
   objects = readings = dice;
   await advance(160);
   expect(screen.queryByText("Dice removed")).toBeNull();
+  if (!stabilizationEnabled) expect(screen.getByText("Roll confirmed")).toBeTruthy();
   await advance(1120);
   expect(screen.getByText("Roll confirmed")).toBeTruthy();
   unmount();

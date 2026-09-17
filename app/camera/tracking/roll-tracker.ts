@@ -59,9 +59,10 @@ function findAgreement(attempts: readonly (readonly DetectedDie[])[], expectedCo
 
 /**
  * Confirm steady rolls normally; use five-of-six agreement after flicker.
+ * Disabling stabilization confirms the first complete reading instead.
  * Confirmed rolls stay frozen until sustained camera motion rearms detection.
  */
-export function createRollTracker(expectedCount: number) {
+export function createRollTracker(expectedCount: number, stabilizationEnabled = true) {
   let candidate: readonly DetectedDie[] = [];
   let positionAnchor: readonly DetectedDie[] = [];
   let attempts: (readonly DetectedDie[])[] = [];
@@ -99,7 +100,7 @@ export function createRollTracker(expectedCount: number) {
       resetCandidate(copyDice(dice));
     }
 
-    if (candidate.length && !sameDice(candidate, dice)
+    if (stabilizationEnabled && candidate.length && !sameDice(candidate, dice)
       && (!complete || sameDice(candidate, dice, false))) {
       recovering = true;
     }
@@ -117,7 +118,7 @@ export function createRollTracker(expectedCount: number) {
     }
 
     let result = dice;
-    let ready = complete && now - candidateSince >= SETTLE_MS;
+    let ready = complete && (!stabilizationEnabled || now - candidateSince >= SETTLE_MS);
     if (recovering) {
       attempts.push(copyDice(dice));
       if (attempts.length > RECOVERY_ATTEMPTS) attempts.shift();

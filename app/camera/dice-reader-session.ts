@@ -22,6 +22,7 @@ interface ReaderSession {
   expectedCount: number;
   cameraTilt: number;
   zoom: number;
+  stabilizationEnabled?: boolean;
   onReady: () => void;
   onStatus: (status: string) => void;
   onRoll: (roll: readonly DieValue[]) => void;
@@ -36,7 +37,7 @@ function createFrameReader(cv: typeof OpenCv, session: ReaderSession) {
   const { video, overlay, expectedCount, cameraTilt, zoom, onStatus, onRoll } = session;
   const frame = document.createElement("canvas");
   frame.width = frame.height = 0;
-  let trackRoll = createRollTracker(expectedCount);
+  let trackRoll = createRollTracker(expectedCount, session.stabilizationEnabled);
   const motion = createRollMotionTracker();
   const removal = createDiceRemovalTracker(session.onPlayArea);
   let displayedMarkers: readonly DetectedDie[] | null = null;
@@ -72,7 +73,7 @@ function createFrameReader(cv: typeof OpenCv, session: ReaderSession) {
     const now = performance.now();
     if (dice.length) session.onDiceVisible?.();
     if (removal.update(fullImage, dice.length, now)) {
-      trackRoll = createRollTracker(expectedCount);
+      trackRoll = createRollTracker(expectedCount, session.stabilizationEnabled);
       drawMarkers(drawing, width, height, []);
       displayedMarkers = null;
       onStatus("Dice removed · waiting for the next roll");

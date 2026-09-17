@@ -17,6 +17,31 @@ function recover(track: ReturnType<typeof createRollTracker>, dice = roll(), sta
 }
 
 describe("roll tracker", () => {
+  it("confirms the first complete reading when stabilization is disabled", () => {
+    const track = createRollTracker(3, false);
+    const state = track(roll(), 0);
+    expect(state.roll).toEqual([2, 4, 6]);
+    expect(state.confirmedDice).toEqual(roll());
+    expect(state.recovering).toBe(false);
+    expect(track(roll(), 160).roll).toBeNull();
+  });
+
+  it("still requires the requested dice count with stabilization disabled", () => {
+    const track = createRollTracker(3, false);
+    for (const values of [[], [2, 4], [2, 4, 6, 1]] satisfies DieValue[][]) {
+      expect(track(roll(values), 0).roll).toBeNull();
+    }
+    expect(track(roll(), 160).roll).toEqual([2, 4, 6]);
+  });
+
+  it("keeps immediate confirmations frozen until sustained motion starts a new roll", () => {
+    const track = createRollTracker(3, false);
+    const confirmed = track(roll(), 0).confirmedDice;
+    expect(track(roll([1, 1, 1]), 160).confirmedDice).toBe(confirmed);
+    expect(track(roll([1, 1, 1], 80), 320, true).roll).toBeNull();
+    expect(track(roll([1, 1, 1], 80), 720, true).roll).toEqual([1, 1, 1]);
+  });
+
   it("keeps normal confirmation speed for steady readings and logs once", () => {
     const track = createRollTracker(3);
     expect(track(roll(), 0).roll).toBeNull();

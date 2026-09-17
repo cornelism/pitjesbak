@@ -13,10 +13,11 @@ interface DiceReaderProps {
   zoomRevision?: number;
   onDiceRemoved?: () => void;
   showPlayArea?: boolean;
+  stabilizationEnabled?: boolean;
   onCrops?: (batch: DieCropBatch | null) => void;
 }
 
-export default function DiceReader({ videoRef, zoom = 1, zoomRevision = 0, onDiceRemoved, showPlayArea = false, onCrops }: DiceReaderProps) {
+export default function DiceReader({ videoRef, zoom = 1, zoomRevision = 0, onDiceRemoved, showPlayArea = false, onCrops, stabilizationEnabled = true }: DiceReaderProps) {
   const {
     overlayRef,
     expectedCount,
@@ -27,7 +28,7 @@ export default function DiceReader({ videoRef, zoom = 1, zoomRevision = 0, onDic
     playArea,
     changeCameraTilt,
     changeExpectedCount,
-  } = useDiceReader(videoRef, zoom, zoomRevision, onDiceRemoved, onCrops);
+  } = useDiceReader(videoRef, zoom, zoomRevision, onDiceRemoved, onCrops, stabilizationEnabled);
 
   return (
     <div className="pointer-events-none absolute inset-0">
