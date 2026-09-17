@@ -30,7 +30,8 @@ export function readRimTop(
   if (enclosedPips < 2 || bounds.width > 40 || bounds.height > 40) return null;
   return withCvResources((own) => {
     const { x, y, width, height } = bounds;
-    const localContour = own(contour.clone());
+    const localContour = own(new cv.Mat());
+    contour.copyTo(localContour);
     for (let i = 0; i < localContour.data32S.length; i += 2) {
       localContour.data32S[i] -= x;
       localContour.data32S[i + 1] -= y;
@@ -79,7 +80,10 @@ export function readRimTop(
     const value = enclosedPips === 2
       ? readRimThree(pips, width, height, tilt, maxPipArea)
       : readSeparatedTop(pips, width, height, maxPipArea, 1);
-    return value && value > enclosedPips ? value : null;
+    // This silhouette can include side faces, so its total enclosed count
+    // is not a lower bound for the top value. The caller compares this
+    // validated top with the original candidate's count and location.
+    return value;
   });
 }
 

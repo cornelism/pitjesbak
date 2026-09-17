@@ -79,7 +79,7 @@ export function detectDiceOpenCv(
       for (const mask of [detail.binary, detail.local]) {
         if (!mask) continue;
         for (const die of readDiceMask(cv, mask, cameraTilt, undefined, "rim")) {
-          if (!rimCandidates.some((bounds) => die.value > bounds.pipCount && sameRimTop(bounds, die))) continue;
+          if (!rimCandidates.some((bounds) => die.value >= bounds.pipCount && sameRimTop(bounds, die))) continue;
           const existing = detected.findIndex((other) => overlapsDie(die, other));
           if (existing === -1) detected.push(die);
           else if (detected[existing].value === 2 && die.value === 3 && sameRimTop(detected[existing], die)) {
@@ -97,7 +97,7 @@ export function detectDiceOpenCv(
         for (const mask of [detail.binary, detail.local]) {
           if (!mask) continue;
           addReadings(readDiceMask(cv, mask, cameraTilt, undefined, "rim", gray).filter((die) =>
-            unread.some((bounds) => die.value > bounds.pipCount && sameRimTop(bounds, die)),
+            unread.some((bounds) => die.value >= bounds.pipCount && sameRimTop(bounds, die)),
           ));
         }
       }

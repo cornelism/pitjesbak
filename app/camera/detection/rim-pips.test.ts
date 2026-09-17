@@ -5,6 +5,7 @@ import { loadTestOpenCv } from "./__test-helpers__/opencv";
 import { readRimThree, readRimTop, sameRimTop } from "./rim-pips";
 import { withCvResources } from "./cv-resources";
 import type { Pip } from "./types";
+import { measurePips } from "./pip-contours";
 
 let cv: typeof OpenCv;
 beforeAll(async () => { ({ cv } = await loadTestOpenCv()); });
@@ -40,6 +41,27 @@ function rimFace(variant: "five" | "missing" | "extra" | "sliver" | "flat" | "ou
 }
 
 describe("readRimTop", () => {
+  it.each([5, 6])("reads a %i top even when the silhouette encloses more pips across its sides", (value) => {
+    withCvResources((own) => {
+      const mask = own(cv.Mat.zeros(40, 40, cv.CV_8UC1));
+      for (let y = 4; y < 36; y++) mask.data.fill(255, y * 40 + 4, y * 40 + 34);
+      const top = value === 5
+        ? [[11, 7], [25, 7], [18, 12], [11, 17], [25, 17]]
+        : [[11, 7], [25, 7], [11, 12], [25, 12], [11, 17], [25, 17]];
+      const sides = [[11, 27], [18, 31], [25, 27]];
+      for (const [x, y] of [...top, ...sides]) {
+        for (let row = y - 1; row <= y + 1; row++) mask.data.fill(0, row * 40 + x - 1, row * 40 + x + 2);
+      }
+      const contours = own(new cv.MatVector()), hierarchy = own(new cv.Mat());
+      cv.findContours(mask, contours, hierarchy, cv.RETR_CCOMP, cv.CHAIN_APPROX_NONE);
+      const contour = own(contours.get(0));
+      const bounds = cv.boundingRect(contour);
+      const pips = measurePips(cv, contours, hierarchy, hierarchy.data32S[2], bounds, cv.contourArea(contour));
+      expect(pips).toHaveLength(value + sides.length);
+      expect(readRimTop(cv, mask, contour, bounds, pips.length, Math.PI / 4)).toBe(value);
+    });
+  });
+
   it.each(["bridge", "missing", "extra", "solid"] as const)("validates dark pip centers in a six with %s", (variant) => {
     withCvResources((own) => {
       const gray = own(new cv.Mat(40, 40, cv.CV_8UC1, new cv.Scalar(80)));
@@ -59,8 +81,14 @@ describe("readRimTop", () => {
       const contour = own(contours.get(0));
       const bounds = cv.boundingRect(contour);
       const beforeGray = new Uint8Array(gray.data), beforeMask = new Uint8Array(mask.data);
+      const beforeContour = new Int32Array(contour.data32S);
       expect(readRimTop(cv, mask, contour, bounds, 5, Math.PI / 4)).toBeNull();
-      expect(readRimTop(cv, mask, contour, bounds, 5, Math.PI / 4, gray)).toBe(variant === "bridge" ? 6 : null);
+      expect(contour.data32S).toEqual(beforeContour);
+      // Removing a corner can leave a four-shaped upper cluster. The detector
+      // rejects that candidate against its original five measured pips (covered
+      // by opencv-rim-recovery.test.ts); this helper returns the top candidate.
+      expect(readRimTop(cv, mask, contour, bounds, 5, Math.PI / 4, gray))
+        .toBe(variant === "bridge" ? 6 : variant === "missing" ? 4 : null);
       expect(gray.data).toEqual(beforeGray);
       expect(mask.data).toEqual(beforeMask);
     });
@@ -78,8 +106,8 @@ describe("readRimTop", () => {
   it("requires at least three enclosed pips to recover a larger pattern", () => {
     expect(rimFace("five", 2)).toBeNull();
   });
-  it("requires the recovered pattern to contain additional pips", () => {
-    expect(rimFace("five", 5)).toBeNull();
+  it("returns a validated top for the caller to compare with the original candidate", () => {
+    expect(rimFace("five", 5)).toBe(5);
   });
   it("ignores a one-pixel-wide vertical outline fragment", () => {
     expect(rimFace("sliver")).toBe(5);

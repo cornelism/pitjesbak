@@ -48,7 +48,10 @@ export function readDiceMask(
           const face = projectTopFace(silhouette, bounds, tilt);
           if (!face) continue;
           const pips = measurePips(cv, contours, hierarchy, hierarchy.data32S[i * 4 + 2], bounds, area);
-          const smallTop = tilt > 0 && face.completeFace && w <= 40 && h <= 40 && area / (w * h) >= 0.45;
+          // The contour already passed the fill/shape checks above. Open rim
+          // pips can reduce its fill below 45%; keep it as an unread candidate
+          // and let the detail pass require a complete measured pip pattern.
+          const smallTop = tilt > 0 && face.completeFace && w <= 40 && h <= 40;
           // Tiny contours need the detail pass: smoothing can hide half a
           // four or merge a three into a plausible single pip.
           if (area < 225 && detail === "standard") {
