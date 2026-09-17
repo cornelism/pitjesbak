@@ -5,7 +5,8 @@ import path from "node:path";
 import { PNG } from "pngjs";
 import { expect, it } from "vitest";
 import { dieCropBounds } from "./crop-geometry";
-import { parseCropUpload, storeCrops } from "./store-crops";
+import { storeCrops } from "./store-crops";
+import { parseCropUpload } from "./parse-crop-upload";
 
 it("saves real-camera crops pixel-identical to their source without local capture dependencies", async () => {
   const original = PNG.sync.read(await readFile(new URL("../__fixtures__/small-six-dice-3-5-6.png", import.meta.url)));

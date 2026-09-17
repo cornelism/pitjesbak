@@ -3,6 +3,7 @@ import type { DetectedDie } from "../dice-types";
 import { withCvResources } from "./cv-resources";
 import { createDiceMasks } from "./dice-masks";
 import { readDiceMask } from "./read-dice-mask";
+import { readDiceMasks } from "./read-dice-masks";
 import type { FaceBounds } from "./top-face";
 import { sameRimTop } from "./rim-pips";
 import { overlapsDie, sameFace } from "./face-overlap";
@@ -27,21 +28,20 @@ export function detectDiceOpenCv(
     const recordCandidate = (bounds: FaceBounds, pipCount: number, small = false) => {
       candidates.push({ ...bounds, pipCount, small });
     };
-    const detected = readDiceMask(cv, binary, cameraTilt, recordCandidate);
+    const standard = { cameraTilt, onCandidate: recordCandidate };
+    const detected = readDiceMask(cv, binary, standard);
     function addReadings(readings: DetectedDie[]) {
       for (const die of readings) {
         if (!detected.some((other) => overlapsDie(die, other))) detected.push(die);
       }
     }
     // A second mask fills unread regions without replacing established values.
-    if (local) addReadings(readDiceMask(cv, local, cameraTilt, recordCandidate));
+    if (local) addReadings(readDiceMask(cv, local, standard));
 
     const unresolved = candidates.filter((bounds) => !detected.some((die) => overlapsDie(bounds, die)));
     if (unresolved.length) {
       const detail = createDiceMasks(cv, frame, cameraTilt, own, "gentle");
-      for (const mask of [detail.binary, detail.local]) {
-        if (!mask) continue;
-        const readings = readDiceMask(cv, mask, cameraTilt);
+      for (const readings of readDiceMasks(cv, detail, { cameraTilt })) {
         // Require the same previously located face and a valid full pip pattern.
         // The retry must separate additional pips, not merely relabel a mark.
         addReadings(readings.filter((die) => unresolved.some((bounds) =>
@@ -55,9 +55,7 @@ export function detectDiceOpenCv(
     const smallCandidates = candidates.filter((candidate) => candidate.small);
     if (smallCandidates.length) {
       const detail = createDiceMasks(cv, frame, cameraTilt, own, "small");
-      for (const mask of [detail.binary, detail.local]) {
-        if (!mask) continue;
-        const readings = readDiceMask(cv, mask, cameraTilt, undefined, "small");
+      for (const readings of readDiceMasks(cv, detail, { cameraTilt, detail: "small" })) {
         for (const die of readings) {
           if (die.value < 2 || !smallCandidates.some((bounds) => die.value >= bounds.pipCount && sameFace(bounds, die))) continue;
           const existing = detected.findIndex((other) => overlapsDie(die, other));
@@ -76,9 +74,8 @@ export function detectDiceOpenCv(
       }) : [];
     if (rimCandidates.length) {
       const detail = createDiceMasks(cv, frame, cameraTilt, own, "rim");
-      for (const mask of [detail.binary, detail.local]) {
-        if (!mask) continue;
-        for (const die of readDiceMask(cv, mask, cameraTilt, undefined, "rim")) {
+      for (const readings of readDiceMasks(cv, detail, { cameraTilt, detail: "rim" })) {
+        for (const die of readings) {
           if (!rimCandidates.some((bounds) => die.value >= bounds.pipCount && sameRimTop(bounds, die))) continue;
           const existing = detected.findIndex((other) => overlapsDie(die, other));
           if (existing === -1) detected.push(die);
@@ -94,9 +91,8 @@ export function detectDiceOpenCv(
         const source = own(cv.matFromArray(height, width, cv.CV_8UC4, data));
         const gray = own(new cv.Mat());
         cv.cvtColor(source, gray, cv.COLOR_RGBA2GRAY);
-        for (const mask of [detail.binary, detail.local]) {
-          if (!mask) continue;
-          addReadings(readDiceMask(cv, mask, cameraTilt, undefined, "rim", gray).filter((die) =>
+        for (const readings of readDiceMasks(cv, detail, { cameraTilt, detail: "rim", pipIntensities: gray })) {
+          addReadings(readings.filter((die) =>
             unread.some((bounds) => die.value >= bounds.pipCount && sameRimTop(bounds, die)),
           ));
         }
@@ -106,9 +102,8 @@ export function detectDiceOpenCv(
     // not prevent a detail/rim pass from recovering the other pips of a four.
     const remaining = candidates.filter((bounds) => !detected.some((die) => overlapsDie(bounds, die)));
     if (cameraTilt > 0 && remaining.length) {
-      for (const mask of [binary, local]) {
-        if (!mask) continue;
-        addReadings(readDiceMask(cv, mask, cameraTilt, undefined, "ellipse").filter((die) =>
+      for (const readings of readDiceMasks(cv, { binary, local }, { cameraTilt, detail: "ellipse" })) {
+        addReadings(readings.filter((die) =>
           remaining.some((bounds) => die.value >= bounds.pipCount && sameFace(bounds, die)),
         ));
       }

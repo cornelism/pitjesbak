@@ -23,7 +23,7 @@ it.each([
   { value: 5 as const, x: 60, expected: [] },
 ])("accepts only a matching recovered top with enough pips: $value at x=$x", ({ value, x, expected }) => {
   const bounds = { x: 20, y: 20, width: 30, height: 20 };
-  vi.mocked(readDiceMask).mockImplementation((_cv, _mask, _angle, onCandidate, detail) => {
+  vi.mocked(readDiceMask).mockImplementation((_cv, _mask, { onCandidate, detail }) => {
     onCandidate?.(bounds, 5, true);
     return detail === "rim" ? [{ ...bounds, x, value }] : [];
   });

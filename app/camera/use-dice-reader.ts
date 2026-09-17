@@ -5,8 +5,19 @@ import { startDiceReader } from "./dice-reader-session";
 import type { PlayArea } from "./play-area/play-area";
 import type { DieCropBatch } from "./die-crops/types";
 
+export interface DiceReaderOptions {
+  videoRef: RefObject<HTMLVideoElement | null>;
+  zoom?: number;
+  zoomRevision?: number;
+  onDiceRemoved?: () => void;
+  onCrops?: (batch: DieCropBatch | null) => void;
+  stabilizationEnabled?: boolean;
+}
+
 /** React settings and display state; each settings change replaces the reader session. */
-export function useDiceReader(videoRef: RefObject<HTMLVideoElement | null>, zoom = 1, zoomRevision = 0, onDiceRemoved?: () => void, onCrops?: (batch: DieCropBatch | null) => void, stabilizationEnabled = true) {
+export function useDiceReader({
+  videoRef, zoom = 1, zoomRevision = 0, onDiceRemoved, onCrops, stabilizationEnabled = true,
+}: DiceReaderOptions) {
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const [expectedCount, setExpectedCount] = useState(3);
   const [cameraTilt, setCameraTilt] = useState(45);

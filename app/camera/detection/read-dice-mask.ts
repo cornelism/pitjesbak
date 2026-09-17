@@ -10,11 +10,16 @@ import { MAX_CAMERA_ANGLE } from "../camera-angle";
 
 const MIN_PROJECTED_DEPTH = Math.cos(MAX_CAMERA_ANGLE * Math.PI / 180);
 
+export interface DiceMaskOptions {
+  cameraTilt: number;
+  onCandidate?: (bounds: FaceBounds, pipCount: number, small?: boolean) => void;
+  detail?: "standard" | "small" | "rim" | "ellipse";
+  pipIntensities?: OpenCv.Mat;
+}
+
 export function readDiceMask(
-  cv: typeof OpenCv, binary: OpenCv.Mat, cameraTilt: number,
-  onCandidate?: (bounds: FaceBounds, pipCount: number, small?: boolean) => void,
-  detail: "standard" | "small" | "rim" | "ellipse" = "standard",
-  pipIntensities?: OpenCv.Mat,
+  cv: typeof OpenCv, binary: OpenCv.Mat,
+  { cameraTilt, onCandidate, detail = "standard", pipIntensities }: DiceMaskOptions,
 ): DetectedDie[] {
   const width = binary.cols, height = binary.rows;
   const contours = new cv.MatVector();

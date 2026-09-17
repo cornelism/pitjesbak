@@ -15,7 +15,7 @@ it("retains a small face with open rim notches for validation without reporting 
     // An open notch leaves no enclosed pip holes and less than 45% fill.
     for (let y = 20; y < 43; y++) mask.data.fill(0, y * 100 + 28, y * 100 + 48);
     const candidate = vi.fn();
-    expect(readDiceMask(cv, mask, 65, candidate)).toEqual([]);
+    expect(readDiceMask(cv, mask, { cameraTilt: 65, onCandidate: candidate })).toEqual([]);
     expect(candidate).toHaveBeenCalledWith({ x: 20, y: 20, width: 36, height: 26 }, 0, true);
   });
 });

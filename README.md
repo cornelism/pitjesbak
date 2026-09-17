@@ -94,8 +94,12 @@ logging. The captured real-camera fixtures read **3, 5, 3**, **6, 1, 5**, and
   and never enters recognition or saved frames. Toggling it preserves the roll.
   Hardware zoom invalidates the old surface until another roll is confirmed.
 
-Steady readings settle after 900 ms. If stationary values change or detections
-drop out, confirmation uses the last six attempts (about 0.8 seconds from the first
+**Stabilize readings** is enabled by default. Turn it off to confirm the first
+complete reading immediately; confirmed rolls still freeze until movement or
+removal. Changing this option resets confirmation without restarting the camera.
+
+With stabilization enabled, steady readings settle after 900 ms. If stationary
+values change or detections drop out, confirmation uses the last six attempts (about 0.8 seconds from the first
 to the sixth reading). Five must agree on every die, and the current reading must match
 that majority. One misread or incomplete detection is tolerated; an even
 split remains uncertain. Small box shifts and size changes are tolerated, while
@@ -247,7 +251,8 @@ button saves locally; it does not upload the frame. Include the expected die val
 and camera-angle setting when sharing a frame for debugging.
 
 Set **Dice to read** to the number you are throwing (default: 3). When that many
-faces stay consistent for about one second, the browser's developer console logs:
+faces are confirmed (after settling when stabilization is enabled), the browser's
+developer console logs:
 
 ```js
 "[Dice roll]", { dice: [2, 4, 6], total: 12, timestamp: "..." }
@@ -255,11 +260,28 @@ faces stay consistent for about one second, the browser's developer console logs
 
 The values follow the dice from left to right. A stationary roll logs once;
 moving or removing the dice for at least 0.4 seconds allows the next roll to log,
-including a repeat of the same values. Partial or unstable readings do not log.
-The last logged roll also appears on the preview. Processing stays in the browser;
-no images are uploaded. Recognition is heuristic and may need tuning against
-your camera and dice. Tests cover the captured camera image, exposure variations,
+including a repeat of the same values. Partial readings do not log; unstable
+readings wait for confirmation when stabilization is enabled.
+The last logged roll also appears on the preview. Recognition stays in the browser
+and is heuristic, so it may need tuning against your camera and dice. Tests cover the captured camera image, exposure variations,
 ray-cast 3D cubes with side pips, and synthetic isolated faces.
+
+### Native die crops and development captures
+
+Each detection attempt can refine located dice using separate crops from the
+camera's native resolution. One frozen frame supplies both the overview and the
+crops, so they show the same instant. Native recognition runs only when the crop
+has more detail than the overview. It accepts a single matching face, tries local
+contrast only when no face is read, and preserves the original pixels. A lower
+crop count cannot replace an already validated overview value.
+
+In development, **Save die crops to repo** writes the latest available individual die
+images and metadata to `docs/dice-crops/captures/capture-*` through a local API.
+Saving is manual; recognition does not automatically persist or upload crops.
+The API validates the payload and PNG dimensions before writing server-owned
+filenames, and is disabled in production. All captures and local examples in
+`docs/dice-crops` are ignored by Git; only its README is tracked. See
+[the capture guide](docs/dice-crops/README.md) for details.
 
 ## Code structure
 
@@ -269,11 +291,16 @@ The camera and game are independent features. Shared UI primitives live in
 - `app/camera/capture`: `camera-session` owns permission requests, playback, and
   track cleanup; `use-camera` owns React state and user actions. `camera-zoom`
   reads capabilities and verifies hardware changes. Frame sizing/cropping is
-  shared by detection and downloads.
+  shared by detection and downloads; `camera-zoom-control` owns slider presentation.
 - `app/camera/detection`: the OpenCV runtime and pixel-to-die pipeline.
-  `opencv-dice` coordinates `dice-masks` → `read-dice-mask` → `top-face` /
+  `opencv-dice` coordinates `dice-masks` → `read-dice-masks` / `read-dice-mask` → `top-face` /
   `pip-contours` → `read-die-value`. Pattern validators and touching-dice
-  separation stay within this feature. OpenCV memory is released explicitly.
+  separation stay within this feature. Retry masks are read lazily in order, with
+  each result accepted before the next pass. OpenCV memory is released explicitly.
+- `app/camera/die-crops`: native frame capture, crop geometry and refinement.
+  `read-native-crop` handles recognition; `read-die-crops` reconciles it with the
+  overview. `parse-crop-upload` validates development uploads and `store-crops`
+  persists them. These server modules are used only by `app/api/dev/die-crops`.
 - `app/camera/tracking`: roll confirmation and motion detection, independent of
   React and OpenCV. This layer decides when to freeze or release a reading.
 - `app/camera/removal`: clear-table pixel checks, the two-second all-dice absence
@@ -287,7 +314,8 @@ The camera and game are independent features. Shared UI primitives live in
   callback; it has no dependency on camera capture, detection, or roll tracking.
 - `app/camera/components`: preview, reader controls, frame download, and marker
   rendering. `use-dice-reader` owns React settings and display state;
-  `dice-reader-session` owns the sampling loop, detection, and tracking.
+  `dice-reader-session` owns the sampling loop, detection, and tracking. Reader
+  configuration travels as named, typed options.
 - `app/game`: scoring and rule definitions, the `use-game` turn-state hook, and
   game presentation. Camera recognition does not depend on game rules.
 

@@ -1,6 +1,11 @@
 import type * as OpenCv from "@techstark/opencv-js";
 import type { OwnCvResource } from "./cv-resources";
 
+export interface DiceMasks {
+  binary: OpenCv.Mat;
+  local: OpenCv.Mat | null;
+}
+
 const CONTRAST_CURVE = Uint8Array.from({ length: 256 }, (_, value) =>
   Math.round(255 * (value / 255) ** 1.5),
 );
@@ -14,7 +19,7 @@ export function createDiceMasks(
   cameraTilt: number,
   own: OwnCvResource,
   profile: "standard" | "gentle" | "small" | "rim" = "standard",
-): { binary: OpenCv.Mat; local: OpenCv.Mat | null } {
+): DiceMasks {
   const { width, height, data } = frame;
   const source = own(cv.matFromArray(height, width, cv.CV_8UC4, data));
   const gray = own(new cv.Mat());

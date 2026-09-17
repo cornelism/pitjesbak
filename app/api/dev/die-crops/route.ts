@@ -1,4 +1,5 @@
-import { parseCropUpload, storeCrops } from "../../../camera/die-crops/store-crops";
+import { storeCrops } from "../../../camera/die-crops/store-crops";
+import { parseCropUpload } from "../../../camera/die-crops/parse-crop-upload";
 
 export const runtime = "nodejs";
 const MAX_BODY_BYTES = 8_000_000;

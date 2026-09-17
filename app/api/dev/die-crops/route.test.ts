@@ -1,9 +1,11 @@
 // @vitest-environment node
 import { afterEach, expect, it, vi } from "vitest";
 import { POST } from "./route";
-import { parseCropUpload, storeCrops } from "../../../camera/die-crops/store-crops";
+import { storeCrops } from "../../../camera/die-crops/store-crops";
+import { parseCropUpload } from "../../../camera/die-crops/parse-crop-upload";
 
-vi.mock("../../../camera/die-crops/store-crops", () => ({ parseCropUpload: vi.fn(), storeCrops: vi.fn() }));
+vi.mock("../../../camera/die-crops/store-crops", () => ({ storeCrops: vi.fn() }));
+vi.mock("../../../camera/die-crops/parse-crop-upload", () => ({ parseCropUpload: vi.fn() }));
 afterEach(() => { vi.unstubAllEnvs(); vi.resetAllMocks(); });
 const request = (origin = "http://localhost:3000", body = "{}") => new Request("http://localhost:3000/api/dev/die-crops", {
   method: "POST", headers: { origin, "content-type": "application/json" }, body,

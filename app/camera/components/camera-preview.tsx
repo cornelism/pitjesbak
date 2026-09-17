@@ -10,6 +10,7 @@ import PlayAreaToggle from "../play-area/play-area-toggle";
 import SaveDieCrops from "../die-crops/save-die-crops";
 import type { DieCropBatch } from "../die-crops/types";
 import StabilizationToggle from "../tracking/stabilization-toggle";
+import CameraZoomControl from "../capture/camera-zoom-control";
 
 export default function CameraPreview() {
   const {
@@ -69,21 +70,7 @@ export default function CameraPreview() {
         {isLive && process.env.NODE_ENV === "development" && <SaveDieCrops batchRef={cropBatchRef} />}
         {isLive && (
           <div>
-            <label className="flex flex-wrap items-center gap-3 text-sm text-zinc-200">
-              <span>Zoom: {(zoom.value / zoom.min).toFixed(1)}× ({zoom.mode})</span>
-              <input
-                type="range"
-                aria-label="Camera zoom"
-                min={zoom.min}
-                max={zoom.max}
-                step={zoom.step}
-                value={zoom.value}
-                disabled={zoomPending}
-                onChange={(event) => { void changeZoom(Number(event.target.value)); }}
-                className="w-48 accent-emerald-400"
-              />
-            </label>
-            {zoomError && <p role="alert" className="mt-2 text-sm text-amber-300">{zoomError}</p>}
+            <CameraZoomControl zoom={zoom} pending={zoomPending} error={zoomError} onChange={changeZoom} />
             <div className="mt-3"><PlayAreaToggle checked={showPlayArea} onChange={setShowPlayArea} /></div>
             <div className="mt-3"><StabilizationToggle checked={stabilizationEnabled} onChange={setStabilizationEnabled} /></div>
           </div>

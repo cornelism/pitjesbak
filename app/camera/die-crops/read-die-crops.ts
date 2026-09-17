@@ -1,10 +1,11 @@
 import type * as OpenCv from "@techstark/opencv-js";
-import { detectDiceOpenCv, type DiceCandidate } from "../detection/opencv-dice";
+import type { DiceCandidate } from "../detection/opencv-dice";
 import { overlapsDie } from "../detection/face-overlap";
 import type { DetectedDie } from "../dice-types";
-import { cropToOverview, cropTransform, dieCropBounds } from "./crop-geometry";
-import { cropContrast } from "./crop-contrast";
-import type { CropBounds, DieCropBatch, ImageSize } from "./types";
+import { cropTransform, dieCropBounds } from "./crop-geometry";
+import { readNativeCrop } from "./read-native-crop";
+import { MAX_CROP_DIMENSION, MAX_DICE_PER_CAPTURE, MIN_NATIVE_SCALE } from "./limits";
+import type { CropBounds, DieCrop, DieCropBatch, ImageSize } from "./types";
 
 interface CropReading {
   capturedAt?: string;
@@ -22,7 +23,7 @@ interface CropReading {
 export function readDieCrops(cv: typeof OpenCv, options: CropReading): { dice: DetectedDie[]; batch: DieCropBatch } {
   const { sourceSize, overviewSize, zoom, cameraTilt, dice, candidates, readCrop } = options;
   const boxes: CropBounds[] = [...dice];
-  const limit = Math.max(1, Math.min(6, options.expectedCount));
+  const limit = Math.max(1, Math.min(MAX_DICE_PER_CAPTURE, options.expectedCount));
   for (const candidate of [...candidates].sort((a, b) => b.pipCount - a.pipCount || b.width * b.height - a.width * a.height)) {
     if (boxes.length >= limit) break;
     if (!boxes.some((box) => overlapsDie(box, candidate))) boxes.push(candidate);
@@ -33,37 +34,26 @@ export function readDieCrops(cv: typeof OpenCv, options: CropReading): { dice: D
   for (const candidate of boxes.slice(0, limit)) {
     const source = dieCropBounds(candidate, overviewSize, sourceSize, zoom);
     // Bound per-frame readback and detection work even with a 4K camera.
-    if (!source || source.width > 768 || source.height > 768) continue;
+    if (!source || source.width > MAX_CROP_DIMENSION || source.height > MAX_CROP_DIMENSION) continue;
     const image = readCrop(source);
     const existing = dice.find((die) => overlapsDie(die, candidate));
-    const crop = { candidate, source, image, overviewValue: existing?.value ?? null, cropValue: null, used: false, preprocessing: "raw" } satisfies DieCropBatch["crops"][number];
+    const crop: DieCrop = { candidate, source, image, overviewValue: existing?.value ?? null, cropValue: null, used: false, preprocessing: "raw" };
     batch.crops.push(crop);
     // No additional detail exists when digital zoom has used up native pixels.
-    if (Math.min(transform.scaleX, transform.scaleY) < 1.25) continue;
-    const locate = (pixels: ImageData) => detectDiceOpenCv(cv, pixels, cameraTilt).map((die) => ({
-      ...die, ...cropToOverview(die, source, overviewSize, sourceSize, zoom),
-    })).filter((die) => overlapsDie(die, candidate)
-      && die.width >= candidate.width * 0.5 && die.width <= candidate.width * 1.8);
-    let matches = locate(image);
-    // An empty reading may benefit from local contrast. Never resolve two
-    // competing faces by changing thresholds until only a preferred one wins.
-    if (!matches.length) {
-      const contrast = cropContrast(image);
-      if (contrast !== image) {
-        matches = locate(contrast);
-        batch.crops[batch.crops.length - 1] = { ...crop, preprocessing: "contrast" };
-      }
-    }
-    if (matches.length !== 1) continue;
-    const match = matches[0];
+    if (Math.min(transform.scaleX, transform.scaleY) < MIN_NATIVE_SCALE) continue;
+    const { match, preprocessing } = readNativeCrop(cv, {
+      image, candidate, source, sourceSize, overviewSize, zoom, cameraTilt,
+    });
+    crop.preprocessing = preprocessing;
+    if (!match) continue;
     if (refined.some((die) => die !== existing && overlapsDie(die, match))) continue;
     // Crop thresholding can open rim pips onto the background and leave a
     // plausible subset (one row of a six looks like three). Fewer enclosed
     // pips do not invalidate an already validated overview pattern. Retain
     // the conflicting count for diagnostics without applying it to the roll.
-    const used = !existing || match.value >= existing.value;
-    batch.crops[batch.crops.length - 1] = { ...batch.crops[batch.crops.length - 1], cropValue: match.value, used };
-    if (!used) continue;
+    crop.cropValue = match.value;
+    crop.used = !existing || match.value >= existing.value;
+    if (!crop.used) continue;
     if (existing) refined[refined.indexOf(existing)] = { ...existing, value: match.value };
     else refined.push(match);
   }
