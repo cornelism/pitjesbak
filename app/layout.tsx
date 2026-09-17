@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Pitjesbak",
-  description: "Zodat KwiKwi op zijn gemak kan pitjesbakken.",
+  description: "Read physical dice rolls with your camera.",
 };
 
 export default function RootLayout({
@@ -27,7 +27,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <main className="flex items-center justify-center min-h-screen bg-(image:--carpet) bg-size-[450px] bg-center font-sans">
+        <main className="flex items-center justify-center min-h-screen bg-zinc-900 font-sans">
           {children}
         </main>
       </body>

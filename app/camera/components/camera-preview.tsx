@@ -1,7 +1,6 @@
 "use client";
 
 import { Camera, CameraOff } from "lucide-react";
-import Link from "next/link";
 import { useRef, useState } from "react";
 import DiceReader from "./dice-reader";
 import SaveCameraFrame from "./save-camera-frame";
@@ -32,9 +31,6 @@ export default function CameraPreview() {
           <p className="text-xs font-medium uppercase tracking-widest text-emerald-400">Pitjesbak</p>
           <h1 id="camera-title" className="mt-1 text-2xl font-semibold">Your camera</h1>
         </div>
-        <Link href="/game" className="rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-white/10 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-400">
-          Go to game &rarr;
-        </Link>
       </header>
 
       <div className="relative w-full overflow-hidden bg-black" style={{ aspectRatio }}>

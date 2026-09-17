@@ -1,37 +1,11 @@
 # Pitjesbak
 
-A simple web-based version of the dice game 'Draadust'.  
-More pitjesbak games will be added later.  
-Note that this fun project is a work in progress.
+A camera app for reading physical dice rolls with local OpenCV.js recognition,
+roll confirmation, and dice removal detection.
 
 For development and agent handoff, start with [Project context](PROJECT_CONTEXT.md).
 It covers the architecture, behavior to preserve, testing, local captures, and
 recent debugging history.
-
-## How to Play
-
-The goal of the game is to be the first player to score 3000 points.
-
-### Gameplay
-
-1.  Click 'Roll the Dice' to start your turn.
-2.  You accumulate points in your 'Current Score'.
-3.  If you have a valid score, you can choose to 'Take Points' to add your 'Current Score' to your total 'Score'.
-4.  To bank your points for the first time, you need a 'Current Score' of at least 500.
-5.  If you roll a non-scoring combination, your turn is over, and you lose your 'Current Score'.
-
-### Scoring
-
-- `1` = 100 points
-- `5` = 50 points
-
-### Special Rolls
-
-- **Three of a kind (Sand):** 1000 points (must be confirmed with a subsequent valid roll).
-- **6-4-2:** Roll again.
-- **6-3-1:** You skip your next turn.
-- **4-3-2:** 200 points.
-- **4-2-1:** Opponent skips a turn.
 
 ## Getting Started
 
@@ -57,7 +31,7 @@ To run this project locally:
 The home page shows a camera preview. Click **Start camera** and allow camera
 access in your browser. **Stop camera** turns it off; leaving the page also
 releases the camera. Video stays on your device, and no audio is captured.
-Camera access requires HTTPS or localhost. Use **Go to game** to open the dice game.
+Camera access requires HTTPS or localhost.
 
 ### Camera frame rate
 
@@ -302,8 +276,7 @@ filenames, and is disabled in production. All captures and local examples in
 
 ## Code structure
 
-The camera and game are independent features. Shared UI primitives live in
-`app/components/ui`; game-specific components and rules live in `app/game`.
+Camera features are separated by responsibility under `app/camera`.
 
 - `app/camera/capture`: `camera-session` owns permission requests, playback, and
   track cleanup; `use-camera` owns React state and user actions. `camera-zoom`
@@ -333,8 +306,6 @@ The camera and game are independent features. Shared UI primitives live in
   rendering. `use-dice-reader` owns React settings and display state;
   `dice-reader-session` owns the sampling loop, detection, and tracking. Reader
   configuration travels as named, typed options.
-- `app/game`: scoring and rule definitions, the `use-game` turn-state hook, and
-  game presentation. Camera recognition does not depend on game rules.
 
 Tests live beside the code they exercise. Raw camera regression images and their
 expected readings remain in `app/camera/__fixtures__`. Node-only OpenCV test setup

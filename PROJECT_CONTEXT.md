@@ -1,16 +1,15 @@
 # Pitjesbak — project context and agent handoff
 
-Last updated: **2026-09-17**. Code snapshot: **`56ae4d3`**
-(`feat: add adjustable camera frame-rate limits`). This document describes that
-snapshot; inspect subsequent commits before relying on implementation details.
+Last updated: **2026-09-17**, after removing the legacy virtual game.
+The application now focuses on physical dice recognition. Inspect the current
+code and subsequent commits before relying on implementation details.
 
 ## 1. Start here
 
-Pitjesbak is a Next.js application with two independent features:
+Pitjesbak is a Next.js application for physical dice recognition:
 
 - `/`: a live camera reader for physical dice in a tray. It recognizes top faces,
   confirms rolls, freezes markers, detects removal, and provides camera controls.
-- `/game`: the virtual dice game **Draadust**, with separate game state and scoring.
 
 The camera reader uses **local OpenCV.js and geometric pip recognition**, not a
 trained model or remote inference service. Normal camera frames remain in the
@@ -21,7 +20,7 @@ the user presses the save button. There is no database or authentication flow.
 
 - Keep features well separated. Keep hooks focused on React state/lifecycle;
   place geometry, recognition, tracking, device operations, and storage in their
-  respective modules. Avoid unrelated changes to game behavior during camera work.
+  respective modules.
 - Add meaningful tests for separated logic and reported regressions. Reproduce
   failures before tuning thresholds; keep prior real-image regressions passing.
 - **Stage each completed slice and give a copyable commit message in a fenced
@@ -56,8 +55,8 @@ The original checkout is `/Users/cornelism/dev/pitjesbak`.
 
 ## 2. Run and verify
 
-Stack: Next **16.0.3**, React **19.2.0**, strict TypeScript, Tailwind **4**, Radix
-UI primitives, Vitest **3**, Testing Library, and pinned OpenCV.js
+Stack: Next **16.0.3**, React **19.2.0**, strict TypeScript, Tailwind **4**,
+Vitest **3**, Testing Library, and pinned OpenCV.js
 **4.12.0-release.1**. Use `package.json` and `package-lock.json` for exact versions.
 
 ```sh
@@ -134,8 +133,6 @@ Latest crop batch → manual development save → validated local API → ignore
 | [removal](app/camera/removal) | Clear-table checks, absence timing and removal indicator |
 | [play-area](app/camera/play-area) | Playing-surface segmentation, boundary and optional overlay |
 | [angle-guide](app/camera/angle-guide) | Angle interactions, perspective grid and scoped animation |
-| [game](app/game) | Independent virtual dice state, scoring and components |
-| [shared UI](app/components/ui) | Reusable UI primitives; utility class merging is in `lib/utils.ts` |
 
 Keep image arrays and per-frame buffers out of React state. The preview keeps the
 latest crop batch in a ref. `useDiceReader` uses named options and `useEffectEvent`
@@ -299,17 +296,12 @@ Digital zoom transforms the overlay; hardware zoom invalidates the calibration.
 This is conservative scene comparison, not trained hand segmentation. Camera
 movement, obstructions, shadows and atypical surfaces can delay removal.
 
-## 8. Angle overlay and game boundaries
+## 8. Angle overlay
 
 The angle guide is a separate feature. It covers the full preview, clips at the
 edges and fades two seconds after adjustment. It illustrates perspective using an
 assumed roughly **37° field of view**; it does not measure the camera or table.
 Grid, play-area shading, labels and status never enter recognition or saved frames.
-
-The virtual game has its own types, constants, scoring and `use-game.ts`. Camera
-`DieValue` and game types need not be coupled. Game pip rendering is a declarative
-layout map; its six intentionally retains two rows of three. See the README for
-gameplay, and use scoring tests as implementation evidence before changing rules.
 
 ## 9. Recent fixes and current handoff state
 
@@ -318,7 +310,7 @@ physical setup was rerun while writing this document.
 
 | Commit | What changed / why it matters |
 | --- | --- |
-| `6b24180` | Separated camera features, crop validation/storage/recognition, lazy mask traversal, and simplified game die rendering |
+| `6b24180` | Separated camera features, crop validation/storage/recognition, and lazy mask traversal |
 | `ae21a13` | Preserved complete pip patterns across rounded faces; fixed a live six being read as four |
 | `56ae4d3` | Added camera FPS control with actual-setting checks and serialized, separately applied zoom/video constraints |
 
@@ -350,8 +342,12 @@ camera/UI/removal/stabilization tests plus lint/typecheck passed for FPS. The fu
 suite/build were not rerun for FPS. Run checks appropriate to the next change;
 do not present these historical results as fresh execution.
 
-No further feature implementation is authorized by this handoff itself. The
-current request is to make project context available to future agents.
+The legacy virtual game, its route/navigation, unused UI primitives and packages,
+and carpet background were removed at the user’s request. The camera is now the
+sole application feature. After removal, all **665 tests across 51 files**, lint,
+TypeScript, and the production build passed. The build lists `/`, the standard
+not-found page, and `/api/dev/die-crops`. This handoff does not authorize additional
+feature work.
 
 ## 10. Debugging workflow for the next agent
 
@@ -393,7 +389,7 @@ current request is to make project context available to future agents.
 
 ## Further reading
 
-- [README](README.md): user controls, detailed recognition behavior and gameplay.
+- [README](README.md): user controls and detailed recognition behavior.
 - [Die crop guide](docs/dice-crops/README.md): local storage and diagnostics.
 - [Fixture catalog](app/camera/__fixtures__/README.md): labelled regression scenes.
 - [Historical image comparisons](docs/screenshots/dice-detection/README.md).

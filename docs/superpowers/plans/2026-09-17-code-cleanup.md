@@ -1,8 +1,8 @@
 # Code Cleanup Implementation Plan
 
-**Goal:** Simplify feature boundaries and remove duplication while preserving camera recognition, confirmation, removal, uploads, and game behavior.
+**Goal:** Simplify feature boundaries and remove duplication while preserving camera recognition, confirmation, removal, and uploads.
 
-**Architecture:** Keep camera capture, recognition, tracking, and presentation separate. Use named reader options, isolate native crop recognition and server upload validation, and reuse ordered mask traversal without changing detection thresholds. Keep the game independent of camera types.
+**Architecture:** Keep camera capture, recognition, tracking, and presentation separate. Use named reader options, isolate native crop recognition and server upload validation, and reuse ordered mask traversal without changing detection thresholds.
 
 **Tech Stack:** Next.js, React, TypeScript, OpenCV.js, Vitest.
 
@@ -31,16 +31,13 @@ Work runs inline in four slices. Stage each completed slice; do not commit autom
 - [x] Verify recognition and resource handling with `npx vitest run app/camera/detection app/camera/die-crops/native-recognition.test.ts` and replay ignored frames 52/53 when available.
 - [x] Stage and report: `refactor: centralize ordered dice mask traversal`.
 
-## 4. Game presentation and maintenance docs
+## 4. Maintenance docs
 
-- [x] Replace repeated pip JSX in `game/components/die.tsx` with a declarative layout table using stable position keys; preserve orientation and appearance.
-- [x] Review scoring, game state, shared UI and runtime setup; retain already focused modules and existing rules.
 - [x] Update README's feature map, stabilization option and development-capture behavior.
 - [x] Run `npm test`, `npm run lint`, `npx tsc --noEmit`, `npm run build`, and `git diff --check`.
 - [x] Verify capture files remain ignored and stage source/docs only.
-- [x] Report: `refactor: simplify die rendering and document feature boundaries`.
 
-## Verification results
+## Historical verification results (before legacy feature removal)
 
 - Camera controls/lifecycle: 28 tests passed.
 - Crop recognition, validation, persistence and API: 37 tests passed.
@@ -48,6 +45,5 @@ Work runs inline in four slices. Stage each completed slice; do not commit autom
 - Full suite: 663 tests passed across 51 files.
 - ESLint, TypeScript, production build and Git whitespace checks passed.
 - Local frames 52 and 53 retain readings 4, 5, 6 at 45°, 65° and 70°.
-- Rendered game die markup matches the original for values 1–6 and invalid values 0/7.
 - Development captures remain ignored; only their README is tracked.
 - All four slices staged together; no commit or push performed.
