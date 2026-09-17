@@ -29,6 +29,30 @@ function startCamera() {
 }
 
 describe("CameraPreview", () => {
+  it("changes FPS without reopening the camera or resetting the selected angle", async () => {
+    const { stream, track } = createStream();
+    let fps = 30;
+    Object.assign(track, {
+      getCapabilities: () => ({ frameRate: { min: 1, max: 30 } }),
+      getSettings: () => ({ frameRate: fps }),
+      applyConstraints: async (constraints: MediaTrackConstraints) => {
+        fps = (constraints.frameRate as ConstrainDoubleRange).max!;
+      },
+    });
+    getUserMedia.mockResolvedValue(stream);
+    render(<CameraPreview />);
+    startCamera();
+    const select = await screen.findByRole("combobox", { name: "Frame rate" });
+    const angle = screen.getByRole<HTMLInputElement>("slider", { name: "Camera angle from overhead" });
+    fireEvent.change(angle, { target: { value: "35" } });
+    await act(async () => { fireEvent.change(select, { target: { value: "15" } }); });
+    expect(screen.getByText("Camera reports 15 FPS")).toBeDefined();
+    expect(angle.value).toBe("35");
+    expect(screen.getByLabelText<HTMLVideoElement>("Live camera preview").srcObject).toBe(stream);
+    expect(getUserMedia).toHaveBeenCalledTimes(1);
+    expect(track.stop).not.toHaveBeenCalled();
+  });
+
   it("uses digital zoom without hardware support and clips the preview to its source aspect ratio", async () => {
     getUserMedia.mockResolvedValue(createStream().stream);
     render(<CameraPreview />);

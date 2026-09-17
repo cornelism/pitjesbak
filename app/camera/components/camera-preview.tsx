@@ -11,6 +11,7 @@ import SaveDieCrops from "../die-crops/save-die-crops";
 import type { DieCropBatch } from "../die-crops/types";
 import StabilizationToggle from "../tracking/stabilization-toggle";
 import CameraZoomControl from "../capture/camera-zoom-control";
+import CameraFrameRateControl from "../capture/camera-frame-rate-control";
 
 export default function CameraPreview() {
   const {
@@ -71,6 +72,7 @@ export default function CameraPreview() {
         {isLive && (
           <div>
             <CameraZoomControl zoom={zoom} pending={zoomPending} error={zoomError} onChange={changeZoom} />
+            <div className="mt-3"><CameraFrameRateControl key={state.track.id} track={state.track} /></div>
             <div className="mt-3"><PlayAreaToggle checked={showPlayArea} onChange={setShowPlayArea} /></div>
             <div className="mt-3"><StabilizationToggle checked={stabilizationEnabled} onChange={setStabilizationEnabled} /></div>
           </div>

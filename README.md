@@ -55,6 +55,19 @@ access in your browser. **Stop camera** turns it off; leaving the page also
 releases the camera. Video stays on your device, and no audio is captured.
 Camera access requires HTTPS or localhost. Use **Go to game** to open the dice game.
 
+### Camera frame rate
+
+While the camera is running, **Frame rate** can limit the stream to supported
+presets of 10, 15, 20, 25, 30 or 60 FPS. **Auto** removes the limit. The control
+shows the frame rate reported by the camera and explains unsupported or rejected
+settings. Try a lower rate such as 15 FPS when troubleshooting the preview.
+The setting lasts until the camera stops; a new camera session starts on Auto.
+
+Changing FPS keeps the camera stream, angle, zoom, and reader session active.
+Hardware zoom and video constraints are applied separately for Chromium
+compatibility. This limits the camera stream; detection retains its existing
+sampling interval. It does not guarantee that lighting-related flicker disappears.
+
 ### Read physical dice
 
 Use **Zoom** below the preview to enlarge the dice. The slider uses camera zoom
