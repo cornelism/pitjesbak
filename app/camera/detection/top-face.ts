@@ -22,7 +22,9 @@ export function projectTopFace(
   // camera. A full cube in our 0–70° range has additional vertical sides.
   // If thresholding already removed those sides, keep the complete face
   // instead of cutting another strip off its bottom (six would become four).
-  const completeFace = tilt === 0 || h <= w;
+  // Rasterized rounded edges can make a square top one pixel taller than
+  // wide. Do not turn that uncertainty into an entire removed pip row.
+  const completeFace = tilt === 0 || h <= w + 1;
   // A wide cube can still expose sides. Require extra height beyond
   // the projected top before allowing a separated-cluster fallback.
   const visibleSides = tilt > 0 && h > w * Math.cos(tilt) + Math.max(2, w * 0.1);

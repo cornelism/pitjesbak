@@ -21,6 +21,15 @@ export function readDieValue(
   // visible, retain the normal strict projection and separated-top validation.
   const useDetailTolerance = smallFace && completeFace && !visibleSides;
   const facePips = allPips.filter(({ point: [px, py] }) => mask[Math.round(py) * w + Math.round(px)]);
+  // Rounded lower edges can over-trim a top even when its full pip grid is
+  // visible. Validate every enclosed pip before accepting a smaller subset,
+  // but only if all centers fit above the calibrated top/side boundary.
+  if (tilt > 0 && !completeFace && allPips.every((pip) =>
+    pip.point[1] <= (w - 1) * Math.cos(tilt) && pip.area / area <= 0.085,
+  )) {
+    const wholeTop = readWholeFacePattern(allPips, w, h);
+    if (wholeTop) return wholeTop;
+  }
   // A large central dot can fill up to 20% of a thresholded face,
   // especially when bright-light segmentation tightens the outline.
   // Other faces keep the stricter limit; all readings need a valid layout.

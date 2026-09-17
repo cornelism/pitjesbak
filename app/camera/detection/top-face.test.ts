@@ -45,4 +45,18 @@ describe("top-face projection", () => {
     silhouette.data.fill(0);
     expect(projectTopFace(silhouette, bounds, 0)).toBeNull();
   });
+
+  it("keeps a nearly square top despite one pixel of outline uncertainty", () => {
+    const { silhouette, bounds } = rectangle(23, 24);
+    const face = projectTopFace(silhouette, bounds, 35 * Math.PI / 180)!;
+    expect(face.completeFace).toBe(true);
+    expect(face.mask.every((pixel) => pixel === 1)).toBe(true);
+  });
+
+  it("still removes sides when the height exceeds the pixel allowance", () => {
+    const { silhouette, bounds } = rectangle(23, 26);
+    const face = projectTopFace(silhouette, bounds, 35 * Math.PI / 180)!;
+    expect(face.completeFace).toBe(false);
+    expect(face.mask[24 * 23 + 11]).toBe(0);
+  });
 });
