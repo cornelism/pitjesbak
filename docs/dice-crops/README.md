@@ -67,5 +67,7 @@ stay on disk and are excluded from normal staging, including `git add .`.
   console errors or horizontal overflow. Browser plugin was unavailable, so
   local Playwright was used. No screen captures were used as detection input.
 
-Actual high-resolution dice from the physical camera still need evaluation;
-the development save button makes those future captures reproducible.
+Physical native-resolution crops were subsequently evaluated while fixing the
+6-3-2 roll at 35°. See [the project handoff](../../PROJECT_CONTEXT.md#9-recent-fixes-and-current-handoff-state)
+for that investigation and the local-only capture paths. Those files are not
+included in a fresh checkout; broader hardware and lighting coverage remains useful.

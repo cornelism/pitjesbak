@@ -4,6 +4,10 @@ A simple web-based version of the dice game 'Draadust'.
 More pitjesbak games will be added later.  
 Note that this fun project is a work in progress.
 
+For development and agent handoff, start with [Project context](PROJECT_CONTEXT.md).
+It covers the architecture, behavior to preserve, testing, local captures, and
+recent debugging history.
+
 ## How to Play
 
 The goal of the game is to be the first player to score 3000 points.
